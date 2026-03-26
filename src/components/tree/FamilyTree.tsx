@@ -33,8 +33,7 @@ import { MaleNode } from './nodes/MaleNode';
 import { FemaleNode } from './nodes/FemaleNode';
 import { JunctionNode } from './nodes/JunctionNode';
 import { BusBarEdge } from './edges/BusBarEdge';
-import { calculateTreeLayout, calculateHourglassLayout, calculateSimplePosition, ViewportInfo, LayoutConfig, LayoutRules, LayoutResult, DEFAULT_LAYOUT_RULES, DEFAULT_LAYOUT_CONFIG, DEFAULT_EDGE_SETTINGS } from '@/lib/layout/treeLayout';
-import { calculateMultiRootGenerations } from '@/lib/generation/calculator';
+import { calculateSimplePosition, LayoutResult, DEFAULT_EDGE_SETTINGS } from '@/lib/layout/treeLayout';
 
 export interface FamilyTreeProps {
     persons: Person[];
@@ -158,18 +157,26 @@ function FamilyTreeInner({
             return initialLayoutRef.current;
         }
 
-        const currentRules = DEFAULT_LAYOUT_RULES;
-        if (currentRules.layoutMode === 'hourglass') {
-            const egoId = selectedPersonId || persons[0]?.personId;
-            initialLayoutRef.current = calculateHourglassLayout(persons, egoId, collapsedIds, relationships, DEFAULT_LAYOUT_CONFIG, DEFAULT_LAYOUT_RULES);
-        } else {
-            const genMap = calculateMultiRootGenerations(personsMap);
-            initialLayoutRef.current = calculateTreeLayout(persons, collapsedIds, relationships, genMap, DEFAULT_LAYOUT_CONFIG, DEFAULT_LAYOUT_RULES);
-        }
+        const positions = new Map<string, { x: number; y: number }>();
+        const clones = new Map<string, string>();
+        
+        // Simple Top-to-Bottom Grid Layout
+        // Use a grid layout to avoid sprawling, max 8 columns based on the scale
+        const cols = Math.max(1, Math.min(8, Math.ceil(Math.sqrt(persons.length))));
+        
+        persons.forEach((p, idx) => {
+            const row = Math.floor(idx / cols);
+            const col = idx % cols;
+            positions.set(p.personId, {
+                x: 50 + col * (NODE_WIDTH + 60),
+                y: 50 + row * (NODE_HEIGHT + 60)
+            });
+        });
 
-        clonesRef.current = initialLayoutRef.current.clones;
+        initialLayoutRef.current = { positions, clones };
+        clonesRef.current = clones;
         return initialLayoutRef.current;
-    }, [persons, personsMap, collapsedIds, relationships, selectedPersonId]);
+    }, [persons]);
 
     // Ancestry path tracing
     const traceAncestryPath = useCallback((personId: string): Set<string> => {
