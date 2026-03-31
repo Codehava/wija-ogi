@@ -469,7 +469,9 @@ export default function PersonDetailPage() {
                     isLiving: person.isLiving,
                     occupation: person.occupation,
                     biography: person.biography,
-                    isRootAncestor: person.isRootAncestor
+                    isRootAncestor: person.isRootAncestor,
+                    title: person.title,
+                    reignTitle: person.reignTitle
                 }}
                 isEditing
                 loading={formLoading}

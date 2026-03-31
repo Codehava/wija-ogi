@@ -179,7 +179,9 @@ export default function FamilyPage() {
                     isLiving: actions.editingPerson.isLiving,
                     occupation: actions.editingPerson.occupation,
                     biography: actions.editingPerson.biography,
-                    isRootAncestor: actions.editingPerson.isRootAncestor
+                    isRootAncestor: actions.editingPerson.isRootAncestor,
+                    title: actions.editingPerson.title,
+                    reignTitle: actions.editingPerson.reignTitle
                 } : actions.addMemberContext ? {
                     gender: (() => {
                         const genderMap: Record<string, Gender> = {

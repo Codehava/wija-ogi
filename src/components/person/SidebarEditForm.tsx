@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { CreatePersonInput, Gender } from '@/types';
+import { CreatePersonInput, Gender, NobilityTitle } from '@/types';
 import { transliterateLatin } from '@/lib/transliteration/engine';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -37,6 +37,8 @@ const DEFAULT_FORM_STATE: Partial<CreatePersonInput> = {
     deathPlace: '',
     isLiving: true,
     occupation: '',
+    title: undefined,
+    reignTitle: '',
     biography: '',
     isRootAncestor: false
 };
@@ -104,6 +106,8 @@ export function SidebarEditForm({
             deathPlace: formData.deathPlace,
             isLiving: formData.isLiving ?? true,
             occupation: formData.occupation,
+            title: formData.title || undefined,
+            reignTitle: formData.reignTitle || undefined,
             biography: formData.biography,
             isRootAncestor: formData.isRootAncestor
         });
@@ -214,6 +218,31 @@ export function SidebarEditForm({
                 onChange={(e) => handleChange('occupation', e.target.value)}
                 placeholder="Pekerjaan/Profesi"
             />
+
+            {/* Nobility Title */}
+            <div className="p-3 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
+                <div className="text-sm font-semibold text-amber-700">👑 Gelar Kebangsawanan</div>
+                <Select
+                    label="Gelar Bangsawan"
+                    value={formData.title || ''}
+                    onChange={(e) => handleChange('title', (e.target.value || undefined) as NobilityTitle | undefined)}
+                    options={[
+                        { value: '', label: '— Tidak ada —' },
+                        { value: 'datu', label: '🏛️ Datu (Penguasa Tertinggi)' },
+                        { value: 'arung', label: '⚔️ Arung (Penguasa Wilayah)' },
+                        { value: 'karaeng', label: '🛡️ Karaeng (Bangsawan Makassar)' },
+                        { value: 'opu', label: '🎖️ Opu (Bangsawan Tinggi)' },
+                        { value: 'andi', label: '✨ Andi (Keturunan Bangsawan)' },
+                        { value: 'other', label: '📜 Lainnya' },
+                    ]}
+                />
+                <Input
+                    label="Gelar Kekuasaan"
+                    value={formData.reignTitle || ''}
+                    onChange={(e) => handleChange('reignTitle', e.target.value)}
+                    placeholder="misal: Raja Bone X"
+                />
+            </div>
 
             {/* Root Ancestor */}
             <label className="flex items-center gap-2 cursor-pointer p-2 bg-teal-50 rounded-lg">

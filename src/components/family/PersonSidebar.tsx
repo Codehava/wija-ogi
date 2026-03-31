@@ -117,7 +117,9 @@ export function PersonSidebar({
                                 isLiving: editingPerson.isLiving,
                                 occupation: editingPerson.occupation,
                                 biography: editingPerson.biography,
-                                isRootAncestor: editingPerson.isRootAncestor
+                                isRootAncestor: editingPerson.isRootAncestor,
+                                title: editingPerson.title,
+                                reignTitle: editingPerson.reignTitle
                             }}
                         />
                     ) : (
