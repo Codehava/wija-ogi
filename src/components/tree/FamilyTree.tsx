@@ -112,6 +112,8 @@ function FamilyTreeInner({
     const prevPersonCount = useRef(0);
     const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
     const clonesRef = useRef<Map<string, string>>(new Map());  // R11 clone mappings
+    const draggingNodeIdRef = useRef<string | null>(null);
+    const lastDraggedTimeRef = useRef<Map<string, number>>(new Map());
 
     // Adaptive sizes
     const adaptiveSizes = useMemo(() => getAdaptiveSizes(persons.length), [persons.length]);
@@ -564,9 +566,9 @@ function FamilyTreeInner({
             positionsRef.current = posMap;
             setIsInitialized(true);
         } else {
-            // Check for new persons
+            // Check for new persons and synced positions from server
             posMap = new Map(positionsRef.current);
-            let hasNewPersons = false;
+            let hasChanges = false;
 
             persons.forEach(p => {
                 if (!posMap.has(p.personId)) {
@@ -577,11 +579,23 @@ function FamilyTreeInner({
                         const simplePos = calculateSimplePosition(p, posMap, personsMap);
                         posMap.set(p.personId, simplePos);
                     }
-                    hasNewPersons = true;
+                    hasChanges = true;
+                } else {
+                    // Sync positions from server if they exist and are fixed
+                    const currentPos = posMap.get(p.personId);
+                    const serverPos = savedPositions.get(p.personId);
+                    const isDragging = draggingNodeIdRef.current === p.personId;
+                    const lastDragged = lastDraggedTimeRef.current.get(p.personId) || 0;
+                    const recentlyDragged = Date.now() - lastDragged < 5000; // 5 second cooldown
+                    
+                    if (serverPos && currentPos && !isDragging && !recentlyDragged && (Math.abs(currentPos.x - serverPos.x) > 1 || Math.abs(currentPos.y - serverPos.y) > 1)) {
+                        posMap.set(p.personId, serverPos);
+                        hasChanges = true;
+                    }
                 }
             });
 
-            if (hasNewPersons) {
+            if (hasChanges) {
                 positionsRef.current = posMap;
             } else {
                 posMap = positionsRef.current;
@@ -678,14 +692,18 @@ function FamilyTreeInner({
         }
     }, [onNodesChange, personsMap, adaptiveSizes, setNodes]);
 
+    const handleNodeDragStart = useCallback((_event: React.MouseEvent, node: Node) => {
+        draggingNodeIdRef.current = node.id;
+    }, []);
+
     // Save positions after drag ends
     const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
-        if (onAllPositionsChange) {
-            onAllPositionsChange(positionsRef.current);
-        } else if (onPositionChange) {
+        draggingNodeIdRef.current = null;
+        lastDraggedTimeRef.current.set(node.id, Date.now());
+        if (onPositionChange) {
             onPositionChange(node.id, { x: node.position.x, y: node.position.y });
         }
-    }, [onAllPositionsChange, onPositionChange]);
+    }, [onPositionChange]);
 
     // Handle node click
     const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -1114,6 +1132,7 @@ function FamilyTreeInner({
                     onNodesChange={handleNodesChange}
                     onEdgesChange={onEdgesChange}
                     onNodeClick={handleNodeClick}
+                    onNodeDragStart={handleNodeDragStart}
                     onNodeDragStop={handleNodeDragStop}
                     onPaneClick={handlePaneClick}
                     onMoveEnd={(_, viewport) => {

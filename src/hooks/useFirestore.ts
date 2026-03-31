@@ -10,7 +10,7 @@ import { familiesApi, personsApi, relationshipsApi } from '@/lib/api';
 import { calculateAllGenerationsFromMap, findRootAncestor, getGenerationStats } from '@/lib/generation/calculator';
 import { useAuth } from '@/contexts/AuthContext';
 
-const REFETCH_INTERVAL = 10_000; // 10 seconds for "realtime" hooks
+const REFETCH_INTERVAL = 3_000; // 3 seconds for "realtime" hooks
 
 // ─────────────────────────────────────────────────────────────────────────────────
 // QUERY KEYS (centralized for cache invalidation)
