@@ -794,20 +794,21 @@ function FamilyTreeInner({
             const treeHeight = maxY - minY;
 
             // Higher zoom = more readable nodes for print
-            const exportZoom = persons.length > 150 ? 0.8 : persons.length > 50 ? 1.0 : 1.5;
+            const exportZoom = persons.length > 150 ? 1.0 : persons.length > 50 ? 1.5 : 2.0;
 
             // Dynamic PIXEL_RATIO per paper size — smaller paper needs lower ratio
-            // to avoid exceeding browser canvas limits (~16M pixels safe maximum)
+            // to avoid exceeding browser canvas limits (~64M pixels safe maximum for modern browsers)
             const PIXEL_RATIO_MAP: Record<string, number> = {
-                A4: 1.5, A3: 2, A2: 2.5, A1: 2.5, A0: 3
+                A4: 2, A3: 2.5, A2: 3, A1: 3.5, A0: 4
             };
-            let pixelRatio = PIXEL_RATIO_MAP[exportPaperSize] || 2;
+            let pixelRatio = PIXEL_RATIO_MAP[exportPaperSize] || 3;
 
             const canvasWidth = Math.ceil(treeWidth * exportZoom);
             const canvasHeight = Math.ceil(treeHeight * exportZoom);
 
             // Safety: cap total pixel count to prevent browser canvas crash
-            const MAX_TOTAL_PIXELS = 16_000_000;
+            // Increased to 64M (approx 8000x8000) for much sharper exports
+            const MAX_TOTAL_PIXELS = 64_000_000;
             const rawPixels = canvasWidth * pixelRatio * canvasHeight * pixelRatio;
             if (rawPixels > MAX_TOTAL_PIXELS) {
                 pixelRatio = Math.max(1, Math.floor(Math.sqrt(MAX_TOTAL_PIXELS / (canvasWidth * canvasHeight)) * 10) / 10);
@@ -854,7 +855,7 @@ function FamilyTreeInner({
                 width: canvasWidth,
                 height: canvasHeight,
                 backgroundColor: '#fafaf9',
-                quality: 0.92,
+                quality: 0.98,
                 filter: (node: HTMLElement) => {
                     const cls = node.className?.toString?.() || '';
                     if (cls.includes('react-flow__controls')) return false;
