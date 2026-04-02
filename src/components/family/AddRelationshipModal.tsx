@@ -62,8 +62,8 @@ export function AddRelationshipModal({
                         onTargetPersonChange('');
                     }}
                     options={[
-                        { value: 'spouse', label: '💍 Pasangan (Suami/Istri)' },
-                        { value: 'parent', label: '👨‍👩‍👧 Orang ini adalah ORANG TUA dari...' },
+                        { value: 'spouse', label: '🤝 Pasangan (Suami/Istri)' },
+                        { value: 'parent', label: '👥 Orang ini adalah ORANG TUA dari...' },
                         { value: 'child', label: '👶 Orang ini adalah ANAK dari...' }
                     ]}
                 />

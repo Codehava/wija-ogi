@@ -183,7 +183,7 @@ export default function PersonDetailPage() {
         );
     }
 
-    const genderIcon = person.gender === 'male' ? '👨' : person.gender === 'female' ? '👩' : '👤';
+    const genderIcon = person.gender === 'male' ? '♂️' : person.gender === 'female' ? '♀️' : '👤';
     const genderColor = person.gender === 'male' ? 'from-blue-600 to-blue-700' :
         person.gender === 'female' ? 'from-pink-600 to-pink-700' :
             'from-purple-600 to-purple-700';
@@ -273,7 +273,7 @@ export default function PersonDetailPage() {
                                 )}
                                 {!person.isLiving && (
                                     <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
-                                        ✝ Almarhum/ah
+                                        🪦 Almarhum/ah
                                     </span>
                                 )}
                                 {person.isRootAncestor && (
@@ -317,7 +317,7 @@ export default function PersonDetailPage() {
                             <div>
                                 <div className="text-sm text-stone-500 mb-1">Tanggal Lahir</div>
                                 <div className="font-medium">
-                                    {person.birthDate ? `🎂 ${person.birthDate}` : '-'}
+                                    {person.birthDate ? `🌟 ${person.birthDate}` : '-'}
                                 </div>
                             </div>
 
@@ -331,7 +331,7 @@ export default function PersonDetailPage() {
                                     <div>
                                         <div className="text-sm text-stone-500 mb-1">Tanggal Wafat</div>
                                         <div className="font-medium">
-                                            {person.deathDate ? `✝ ${person.deathDate}` : '-'}
+                                            {person.deathDate ? `🪦 ${person.deathDate}` : '-'}
                                         </div>
                                     </div>
 
@@ -361,7 +361,7 @@ export default function PersonDetailPage() {
                 {relatedPersons.spouses.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <h2 className="font-bold text-stone-800">💑 Pasangan ({relatedPersons.spouses.length})</h2>
+                            <h2 className="font-bold text-stone-800">🤝 Pasangan ({relatedPersons.spouses.length})</h2>
                         </CardHeader>
                         <CardBody>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -391,7 +391,7 @@ export default function PersonDetailPage() {
                 {relatedPersons.parents.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <h2 className="font-bold text-stone-800">👨‍👩‍👦 Orang Tua ({relatedPersons.parents.length})</h2>
+                            <h2 className="font-bold text-stone-800">👥‍♂️ Orang Tua ({relatedPersons.parents.length})</h2>
                         </CardHeader>
                         <CardBody>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -433,7 +433,7 @@ export default function PersonDetailPage() {
                 {relatedPersons.siblings.length > 0 && (
                     <Card>
                         <CardHeader>
-                            <h2 className="font-bold text-stone-800">👫 Saudara ({relatedPersons.siblings.length})</h2>
+                            <h2 className="font-bold text-stone-800">👥 Saudara ({relatedPersons.siblings.length})</h2>
                         </CardHeader>
                         <CardBody>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

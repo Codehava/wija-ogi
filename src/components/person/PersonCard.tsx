@@ -43,7 +43,7 @@ export function PersonCard({
 
     const generationText = generation > 0 ? getGenerationLabel(generation) : null;
 
-    const genderIcon = person.gender === 'male' ? '👨' : person.gender === 'female' ? '👩' : '👤';
+    const genderIcon = person.gender === 'male' ? '♂️' : person.gender === 'female' ? '♀️' : '👤';
     const genderColor = person.gender === 'male' ? 'text-blue-500' : person.gender === 'female' ? 'text-pink-500' : 'text-gray-500';
 
     return (
@@ -98,7 +98,7 @@ export function PersonCard({
                         <div>
                             <div className="text-stone-500 text-xs">Status</div>
                             <div className="font-medium">
-                                {person.isLiving ? '🌱 Masih hidup' : '✝ Almarhum/ah'}
+                                {person.isLiving ? '🌱 Masih hidup' : '🪦 Almarhum/ah'}
                             </div>
                         </div>
                     </div>
@@ -108,7 +108,7 @@ export function PersonCard({
                         {person.birthDate && (
                             <div>
                                 <div className="text-stone-500 text-xs">Tanggal Lahir</div>
-                                <div className="font-medium">🎂 {person.birthDate}</div>
+                                <div className="font-medium">🌟 {person.birthDate}</div>
                                 {person.birthPlace && (
                                     <div className="text-stone-600 text-xs">{person.birthPlace}</div>
                                 )}
@@ -118,7 +118,7 @@ export function PersonCard({
                         {person.deathDate && (
                             <div>
                                 <div className="text-stone-500 text-xs">Tanggal Wafat</div>
-                                <div className="font-medium">✝ {person.deathDate}</div>
+                                <div className="font-medium">🪦 {person.deathDate}</div>
                                 {person.deathPlace && (
                                     <div className="text-stone-600 text-xs">{person.deathPlace}</div>
                                 )}
@@ -141,7 +141,7 @@ export function PersonCard({
                             {person.title && (
                                 <div className="font-medium text-amber-700 text-sm">
                                     {person.title === 'datu' ? '🏛️ Datu' :
-                                        person.title === 'arung' ? '⚔️ Arung' :
+                                        person.title === 'arung' ? '🗡️ Arung' :
                                             person.title === 'karaeng' ? '🛡️ Karaeng' :
                                                 person.title === 'opu' ? '🎖️ Opu' :
                                                     person.title === 'andi' ? '✨ Andi' : '📜 Lainnya'}
@@ -161,12 +161,12 @@ export function PersonCard({
                         <div className="flex flex-wrap gap-2 text-xs">
                             {person.relationships.spouseIds.length > 0 && (
                                 <span className="bg-pink-100 text-pink-700 px-2 py-1 rounded">
-                                    💑 {person.relationships.spouseIds.length} pasangan
+                                    🤝 {person.relationships.spouseIds.length} pasangan
                                 </span>
                             )}
                             {person.relationships.parentIds.length > 0 && (
                                 <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                    👨‍👩 {person.relationships.parentIds.length} orang tua
+                                    👥 {person.relationships.parentIds.length} orang tua
                                 </span>
                             )}
                             {person.relationships.childIds.length > 0 && (
@@ -176,7 +176,7 @@ export function PersonCard({
                             )}
                             {person.relationships.siblingIds.length > 0 && (
                                 <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                                    👫 {person.relationships.siblingIds.length} saudara
+                                    👥 {person.relationships.siblingIds.length} saudara
                                 </span>
                             )}
                         </div>

@@ -1222,7 +1222,7 @@ function FamilyTreeInner({
                             <div className="text-xs text-stone-600 mt-1 line-clamp-2 italic">{hp.person.biography}</div>
                         )}
                         <div className="mt-1.5 pt-1.5 border-t border-stone-100 text-xs text-stone-500 space-y-0.5">
-                            {spNames.length > 0 && <div>💑 {spNames.join(', ')}</div>}
+                            {spNames.length > 0 && <div>🤝 {spNames.join(', ')}</div>}
                             {cCount > 0 && <div>👶 {cCount} anak</div>}
                         </div>
                     </div>

@@ -154,7 +154,7 @@ export function TreeSearch({
                                 'w-8 h-8 rounded-full flex items-center justify-center text-white text-sm',
                                 person.gender === 'female' ? 'bg-red-600' : 'bg-green-600'
                             )}>
-                                {person.gender === 'female' ? '👩' : '👨'}
+                                {person.gender === 'female' ? '♀️' : '♂️'}
                             </span>
 
                             {/* Name */}

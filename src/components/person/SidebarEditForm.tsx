@@ -19,8 +19,8 @@ export interface SidebarEditFormProps {
 }
 
 const GENDER_OPTIONS = [
-    { value: 'male', label: '👨 Laki-laki' },
-    { value: 'female', label: '👩 Perempuan' },
+    { value: 'male', label: '♂️ Laki-laki' },
+    { value: 'female', label: '♀️ Perempuan' },
     { value: 'other', label: '👤 Lainnya' },
     { value: 'unknown', label: '❓ Tidak diketahui' }
 ];
@@ -229,7 +229,7 @@ export function SidebarEditForm({
                     options={[
                         { value: '', label: '— Tidak ada —' },
                         { value: 'datu', label: '🏛️ Datu (Penguasa Tertinggi)' },
-                        { value: 'arung', label: '⚔️ Arung (Penguasa Wilayah)' },
+                        { value: 'arung', label: '🗡️ Arung (Penguasa Wilayah)' },
                         { value: 'karaeng', label: '🛡️ Karaeng (Bangsawan Makassar)' },
                         { value: 'opu', label: '🎖️ Opu (Bangsawan Tinggi)' },
                         { value: 'andi', label: '✨ Andi (Keturunan Bangsawan)' },

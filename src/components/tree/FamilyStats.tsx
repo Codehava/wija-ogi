@@ -94,8 +94,8 @@ export function FamilyStats({
     const statCards: StatCard[] = [
         { label: 'Total Anggota', value: stats.total, icon: '👥', color: 'bg-teal-500' },
         { label: 'Generasi', value: stats.generations, icon: '🌳', color: 'bg-emerald-500' },
-        { label: 'Laki-laki', value: stats.male, icon: '👨', color: 'bg-blue-500' },
-        { label: 'Perempuan', value: stats.female, icon: '👩', color: 'bg-pink-500' },
+        { label: 'Laki-laki', value: stats.male, icon: '♂️', color: 'bg-blue-500' },
+        { label: 'Perempuan', value: stats.female, icon: '♀️', color: 'bg-pink-500' },
         { label: 'Masih Hidup', value: stats.living, icon: '💚', color: 'bg-green-500' },
         { label: 'Almarhum', value: stats.deceased, icon: '🕊️', color: 'bg-stone-500' },
     ];

@@ -173,7 +173,7 @@ export function PersonSidebar({
 
                         {person.relationships.spouseIds.length > 0 && (
                             <div className="mb-3">
-                                <div className="text-xs text-stone-500 mb-1">💍 Pasangan</div>
+                                <div className="text-xs text-stone-500 mb-1">🤝 Pasangan</div>
                                 {person.relationships.spouseIds.map(id => {
                                     const spouse = persons.find(p => p.personId === id);
                                     const rel = relationships.find(r =>
@@ -215,7 +215,7 @@ export function PersonSidebar({
 
                         {person.relationships.parentIds.length > 0 && (
                             <div className="mb-3">
-                                <div className="text-xs text-stone-500 mb-1">👨‍👩‍👧 Orang Tua</div>
+                                <div className="text-xs text-stone-500 mb-1">👥 Orang Tua</div>
                                 {person.relationships.parentIds.map(id => {
                                     const parent = persons.find(p => p.personId === id);
                                     return parent ? (
@@ -275,7 +275,7 @@ export function PersonSidebar({
                                     onClick={() => onQuickAdd('spouse')}
                                     className="px-3 py-2.5 text-sm bg-pink-50 text-pink-700 rounded-lg hover:bg-pink-100 transition border border-pink-200 font-medium text-left"
                                 >
-                                    💍 Pasangan
+                                    🤝 Pasangan
                                 </button>
                                 {person.relationships.parentIds.length < 2 && (
                                     <>
@@ -287,7 +287,7 @@ export function PersonSidebar({
                                                     onClick={() => onQuickAdd('father')}
                                                     className="px-3 py-2.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition border border-blue-200 font-medium text-left"
                                                 >
-                                                    👨 Ayah
+                                                    ♂️ Ayah
                                                 </button>
                                             )}
                                         {!person.relationships.parentIds.some(id => {
@@ -298,7 +298,7 @@ export function PersonSidebar({
                                                     onClick={() => onQuickAdd('mother')}
                                                     className="px-3 py-2.5 text-sm bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition border border-purple-200 font-medium text-left"
                                                 >
-                                                    👩 Ibu
+                                                    ♀️ Ibu
                                                 </button>
                                             )}
                                     </>
@@ -307,13 +307,13 @@ export function PersonSidebar({
                                     onClick={() => onQuickAdd('son')}
                                     className="px-3 py-2.5 text-sm bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition border border-green-200 font-medium text-left"
                                 >
-                                    👦 Anak Laki-laki
+                                    ♂️ Anak Laki-laki
                                 </button>
                                 <button
                                     onClick={() => onQuickAdd('daughter')}
                                     className="px-3 py-2.5 text-sm bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition border border-orange-200 font-medium text-left"
                                 >
-                                    👧 Anak Perempuan
+                                    ♀️ Anak Perempuan
                                 </button>
                             </div>
                             <button

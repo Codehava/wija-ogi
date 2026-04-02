@@ -184,7 +184,7 @@ export default function AcceptInvitationPage() {
                 </CardHeader>
                 <CardBody className="py-6">
                     <div className="text-center mb-6">
-                        <div className="text-5xl mb-4">👨‍👩‍👧‍👦</div>
+                        <div className="text-5xl mb-4">👥</div>
                         <h2 className="text-lg font-semibold text-stone-800">
                             {invitation?.invitedByName} mengundang Anda
                         </h2>

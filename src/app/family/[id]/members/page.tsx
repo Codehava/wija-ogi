@@ -169,8 +169,8 @@ export default function MembersPage() {
                             onChange={(e) => setFilterGender(e.target.value as FilterGender)}
                             options={[
                                 { value: 'all', label: 'Semua Gender' },
-                                { value: 'male', label: '👨 Laki-laki' },
-                                { value: 'female', label: '👩 Perempuan' },
+                                { value: 'male', label: '♂️ Laki-laki' },
+                                { value: 'female', label: '♀️ Perempuan' },
                                 { value: 'other', label: '👤 Lainnya' }
                             ]}
                         />
@@ -182,7 +182,7 @@ export default function MembersPage() {
                             options={[
                                 { value: 'all', label: 'Semua Status' },
                                 { value: 'living', label: '🌱 Masih Hidup' },
-                                { value: 'deceased', label: '✝ Almarhum/ah' }
+                                { value: 'deceased', label: '🪦 Almarhum/ah' }
                             ]}
                         />
 
@@ -273,7 +273,7 @@ export default function MembersPage() {
                                             </td>
                                             <td className="px-4 py-3 hidden md:table-cell">
                                                 <span className={person.gender === 'male' ? 'text-blue-600' : 'text-pink-600'}>
-                                                    {person.gender === 'male' ? '👨' : person.gender === 'female' ? '👩' : '👤'}
+                                                    {person.gender === 'male' ? '♂️' : person.gender === 'female' ? '♀️' : '👤'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-stone-600 hidden lg:table-cell">

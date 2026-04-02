@@ -233,7 +233,7 @@ export function PersonNode({
                 {/* Deceased indicator */}
                 {!person.isLiving && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-stone-400 rounded-full flex items-center justify-center text-white text-[8px]">
-                        ✝
+                        🪦
                     </div>
                 )}
             </div>

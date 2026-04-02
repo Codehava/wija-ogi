@@ -101,8 +101,8 @@ export function AddRelationshipForm({
                         value={type}
                         onChange={(e) => setType(e.target.value as RelationshipType)}
                         options={[
-                            { value: 'spouse', label: '💑 Pasangan (Suami/Istri)' },
-                            { value: 'parent-child', label: '👨‍👧 Orang Tua - Anak' }
+                            { value: 'spouse', label: '🤝 Pasangan (Suami/Istri)' },
+                            { value: 'parent-child', label: '👥 Orang Tua - Anak' }
                         ]}
                     />
 
@@ -112,14 +112,14 @@ export function AddRelationshipForm({
                             <div className="flex items-center justify-center gap-4">
                                 <div className="text-center">
                                     <div className="text-2xl mb-1">
-                                        {person1.gender === 'male' ? '👨' : person1.gender === 'female' ? '👩' : '👤'}
+                                        {person1.gender === 'male' ? '♂️' : person1.gender === 'female' ? '♀️' : '👤'}
                                     </div>
                                     <DualScriptDisplay latinText={person1.firstName} displayMode="both" size="sm" />
                                 </div>
 
                                 <div className="text-center px-4">
                                     <div className="text-2xl">
-                                        {type === 'spouse' ? '💑' : '👨‍👧'}
+                                        {type === 'spouse' ? '🤝' : '👥'}
                                     </div>
                                     <div className="text-xs text-stone-500 mt-1">
                                         {type === 'spouse' ? 'Pasangan' : 'Orang Tua → Anak'}
@@ -128,7 +128,7 @@ export function AddRelationshipForm({
 
                                 <div className="text-center">
                                     <div className="text-2xl mb-1">
-                                        {person2.gender === 'male' ? '👨' : person2.gender === 'female' ? '👩' : '👤'}
+                                        {person2.gender === 'male' ? '♂️' : person2.gender === 'female' ? '♀️' : '👤'}
                                     </div>
                                     <DualScriptDisplay latinText={person2.firstName} displayMode="both" size="sm" />
                                 </div>
@@ -146,7 +146,7 @@ export function AddRelationshipForm({
                                 { value: '', label: '-- Pilih --' },
                                 ...availablePersons1.map(p => ({
                                     value: p.personId,
-                                    label: `${p.gender === 'male' ? '👨' : '👩'} ${p.fullName}`
+                                    label: `${p.gender === 'male' ? '♂️' : '♀️'} ${p.fullName}`
                                 }))
                             ]}
                             error={errors.person1Id}
@@ -160,7 +160,7 @@ export function AddRelationshipForm({
                                 { value: '', label: '-- Pilih --' },
                                 ...availablePersons2.map(p => ({
                                     value: p.personId,
-                                    label: `${p.gender === 'male' ? '👨' : '👩'} ${p.fullName}`
+                                    label: `${p.gender === 'male' ? '♂️' : '♀️'} ${p.fullName}`
                                 }))
                             ]}
                             error={errors.person2Id}

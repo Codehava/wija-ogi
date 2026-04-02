@@ -29,8 +29,8 @@ export interface PersonFormProps {
 }
 
 const GENDER_OPTIONS = [
-    { value: 'male', label: '👨 Laki-laki' },
-    { value: 'female', label: '👩 Perempuan' },
+    { value: 'male', label: '♂️ Laki-laki' },
+    { value: 'female', label: '♀️ Perempuan' },
     { value: 'other', label: '👤 Lainnya' },
     { value: 'unknown', label: '❓ Tidak diketahui' }
 ];
@@ -54,11 +54,11 @@ const DEFAULT_FORM_STATE: Partial<CreatePersonInput> = {
 };
 
 const CONTEXT_LABELS: Record<string, { emoji: string; label: string; color: string }> = {
-    spouse: { emoji: '💍', label: 'Menambahkan pasangan untuk', color: 'bg-pink-50 border-pink-200 text-pink-700' },
-    father: { emoji: '👨', label: 'Menambahkan ayah untuk', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-    mother: { emoji: '👩', label: 'Menambahkan ibu untuk', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-    son: { emoji: '👦', label: 'Menambahkan anak laki-laki untuk', color: 'bg-green-50 border-green-200 text-green-700' },
-    daughter: { emoji: '👧', label: 'Menambahkan anak perempuan untuk', color: 'bg-orange-50 border-orange-200 text-orange-700' },
+    spouse: { emoji: '🤝', label: 'Menambahkan pasangan untuk', color: 'bg-pink-50 border-pink-200 text-pink-700' },
+    father: { emoji: '♂️', label: 'Menambahkan ayah untuk', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+    mother: { emoji: '♀️', label: 'Menambahkan ibu untuk', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+    son: { emoji: '♂️', label: 'Menambahkan anak laki-laki untuk', color: 'bg-green-50 border-green-200 text-green-700' },
+    daughter: { emoji: '♀️', label: 'Menambahkan anak perempuan untuk', color: 'bg-orange-50 border-orange-200 text-orange-700' },
 };
 
 export function PersonForm({
@@ -284,7 +284,7 @@ export function PersonForm({
                                 options={[
                                     { value: '', label: '— Tidak ada —' },
                                     { value: 'datu', label: '🏛️ Datu (Penguasa Tertinggi)' },
-                                    { value: 'arung', label: '⚔️ Arung (Penguasa Wilayah)' },
+                                    { value: 'arung', label: '🗡️ Arung (Penguasa Wilayah)' },
                                     { value: 'karaeng', label: '🛡️ Karaeng (Bangsawan Makassar)' },
                                     { value: 'opu', label: '🎖️ Opu (Bangsawan Tinggi)' },
                                     { value: 'andi', label: '✨ Andi (Keturunan Bangsawan)' },
