@@ -545,7 +545,13 @@ function FamilyTreeInner({
                     if (savedPositions.has(p.personId)) {
                         posMap.set(p.personId, savedPositions.get(p.personId)!);
                     } else {
-                        const simplePos = calculateSimplePosition(p, posMap, personsMap);
+                        const viewport = {
+                            pan: { x: reactFlowInstance.getViewport().x, y: reactFlowInstance.getViewport().y },
+                            zoom: reactFlowInstance.getViewport().zoom,
+                            containerWidth: reactFlowRef.current?.clientWidth || window.innerWidth,
+                            containerHeight: reactFlowRef.current?.clientHeight || window.innerHeight,
+                        };
+                        const simplePos = calculateSimplePosition(p, posMap, personsMap, viewport);
                         posMap.set(p.personId, simplePos);
                     }
                 });
@@ -557,7 +563,13 @@ function FamilyTreeInner({
                     if (pos) {
                         posMap.set(p.personId, pos);
                     } else {
-                        const simplePos = calculateSimplePosition(p, posMap, personsMap);
+                        const viewport = {
+                            pan: { x: reactFlowInstance.getViewport().x, y: reactFlowInstance.getViewport().y },
+                            zoom: reactFlowInstance.getViewport().zoom,
+                            containerWidth: reactFlowRef.current?.clientWidth || window.innerWidth,
+                            containerHeight: reactFlowRef.current?.clientHeight || window.innerHeight,
+                        };
+                        const simplePos = calculateSimplePosition(p, posMap, personsMap, viewport);
                         posMap.set(p.personId, simplePos);
                     }
                 });
@@ -576,7 +588,13 @@ function FamilyTreeInner({
                     if (savedPos) {
                         posMap.set(p.personId, savedPos);
                     } else {
-                        const simplePos = calculateSimplePosition(p, posMap, personsMap);
+                        const viewport = {
+                            pan: { x: reactFlowInstance.getViewport().x, y: reactFlowInstance.getViewport().y },
+                            zoom: reactFlowInstance.getViewport().zoom,
+                            containerWidth: reactFlowRef.current?.clientWidth || window.innerWidth,
+                            containerHeight: reactFlowRef.current?.clientHeight || window.innerHeight,
+                        };
+                        const simplePos = calculateSimplePosition(p, posMap, personsMap, viewport);
                         posMap.set(p.personId, simplePos);
                     }
                     hasChanges = true;
