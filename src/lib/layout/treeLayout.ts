@@ -19,8 +19,8 @@ export interface ViewportInfo {
     containerHeight: number;
 }
 
-const NODE_WIDTH = 140;
-const NODE_HEIGHT = 100;
+const NODE_WIDTH = 188;
+const NODE_HEIGHT = 128;
 
 /**
  * Calculate a simple position for a new person without running full layout.
@@ -40,7 +40,7 @@ export function calculateSimplePosition(
             const offsetX = (Math.random() - 0.5) * (siblingCount * 50);
             return {
                 x: parentPos.x + offsetX,
-                y: parentPos.y + NODE_HEIGHT + 100 + Math.random() * 20
+                y: parentPos.y + NODE_HEIGHT + 86 + Math.random() * 20
             };
         }
     }
@@ -52,7 +52,7 @@ export function calculateSimplePosition(
             if (childPos) {
                 return {
                     x: childPos.x + (Math.random() - 0.5) * 50,
-                    y: childPos.y - NODE_HEIGHT - 100 - Math.random() * 20
+                    y: childPos.y - NODE_HEIGHT - 86 - Math.random() * 20
                 };
             }
         }
@@ -63,7 +63,7 @@ export function calculateSimplePosition(
         const spousePos = existingPositions.get(spouseId);
         if (spousePos) {
             return {
-                x: spousePos.x + NODE_WIDTH + 60,
+                x: spousePos.x + NODE_WIDTH + 56,
                 y: spousePos.y
             };
         }
@@ -78,7 +78,7 @@ export function calculateSimplePosition(
             const childPos = existingPositions.get(existingId)!;
              return {
                 x: childPos.x + (Math.random() - 0.5) * 50,
-                y: childPos.y - NODE_HEIGHT - 100 - Math.random() * 20
+                y: childPos.y - NODE_HEIGHT - 86 - Math.random() * 20
             };
         }
         
@@ -87,7 +87,7 @@ export function calculateSimplePosition(
             const parentPos = existingPositions.get(existingId)!;
              return {
                 x: parentPos.x + (Math.random() - 0.5) * 50,
-                y: parentPos.y + NODE_HEIGHT + 100 + Math.random() * 20
+                y: parentPos.y + NODE_HEIGHT + 86 + Math.random() * 20
             };
         }
         
@@ -95,7 +95,7 @@ export function calculateSimplePosition(
         if (existingPerson.relationships.spouseIds.includes(newPerson.personId)) {
             const spousePos = existingPositions.get(existingId)!;
              return {
-                x: spousePos.x + NODE_WIDTH + 60,
+                x: spousePos.x + NODE_WIDTH + 56,
                 y: spousePos.y
             };
         }
@@ -127,7 +127,7 @@ export function calculateSimplePosition(
         
         return {
             x: (minX + maxX) / 2 + (Math.random() * 100 - 50),
-            y: maxY + NODE_HEIGHT + 100 + (Math.random() * 50)
+            y: maxY + NODE_HEIGHT + 86 + (Math.random() * 50)
         };
     }
 

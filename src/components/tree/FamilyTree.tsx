@@ -50,15 +50,23 @@ export interface FamilyTreeProps {
 }
 
 // Layout constants
-const NODE_WIDTH = 140;
-const NODE_HEIGHT = 100;
-const SHAPE_HEIGHT = 56; // Height of the shape area (circle/triangle)
+const NODE_WIDTH = 188;
+const NODE_HEIGHT = 128;
+
+type AdaptiveSizes = {
+    nodeWidth: number;
+    nodeHeight: number;
+    shapeSize: number;
+    textWidth: number;
+    fontScale: number;
+};
+type TextDensityMode = 'readable' | 'compact';
 
 // Adaptive sizing
-function getAdaptiveSizes(personCount: number) {
-    if (personCount > 200) return { nodeWidth: 100, nodeHeight: 80, shapeSize: 36 };
-    if (personCount > 100) return { nodeWidth: 120, nodeHeight: 90, shapeSize: 44 };
-    return { nodeWidth: 140, nodeHeight: 100, shapeSize: 56 };
+function getAdaptiveSizes(personCount: number): AdaptiveSizes {
+    if (personCount > 200) return { nodeWidth: 132, nodeHeight: 100, shapeSize: 42, textWidth: 136, fontScale: 1 };
+    if (personCount > 100) return { nodeWidth: 162, nodeHeight: 114, shapeSize: 50, textWidth: 168, fontScale: 1.08 };
+    return { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT, shapeSize: 58, textWidth: 188, fontScale: 1.16 };
 }
 
 // Custom node types for React Flow
@@ -72,6 +80,22 @@ const nodeTypes = {
 const edgeTypes = {
     busbar: BusBarEdge,
 };
+
+const PAPER_SIZES: Record<'A4' | 'A3' | 'A2' | 'A1' | 'A0', { w: number; h: number }> = {
+    A4: { w: 210, h: 297 },
+    A3: { w: 297, h: 420 },
+    A2: { w: 420, h: 594 },
+    A1: { w: 594, h: 841 },
+    A0: { w: 841, h: 1189 },
+};
+const A_SERIES_RATIO = Math.SQRT2;
+
+function hasUsablePersistedPosition(person: Person): boolean {
+    if (!person.position || person.position.x === undefined || person.position.y === undefined) return false;
+    if (person.position.fixed) return true;
+    // DB default for new person is (0,0,false); treat it as unset so auto-placement can run.
+    return person.position.x !== 0 || person.position.y !== 0;
+}
 
 
 
@@ -104,6 +128,8 @@ function FamilyTreeInner({
     const [hoveredPerson, setHoveredPerson] = useState<{ person: Person; x: number; y: number } | null>(null);
     const [isExporting, setIsExporting] = useState(false);
     const [exportPaperSize, setExportPaperSize] = useState<'A4' | 'A3' | 'A2' | 'A1' | 'A0'>('A3');
+    const [showPaperGuide, setShowPaperGuide] = useState(true);
+    const [textDensityMode, setTextDensityMode] = useState<TextDensityMode>('readable');
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
     const [lodLevel, setLodLevel] = useState<number>(2); // P3b: 0=shape, 1=name, 2=full
 
@@ -132,7 +158,7 @@ function FamilyTreeInner({
     const savedPositions = useMemo(() => {
         const map = new Map<string, { x: number; y: number }>();
         persons.forEach(p => {
-            if (p.position && p.position.x !== undefined && p.position.y !== undefined) {
+            if (hasUsablePersistedPosition(p)) {
                 map.set(p.personId, { x: p.position.x, y: p.position.y });
             }
         });
@@ -153,7 +179,7 @@ function FamilyTreeInner({
     // Calculate layout (cached)
     const getInitialDagreLayout = useCallback(() => {
         if (initialLayoutRef.current) return initialLayoutRef.current;
-        const hasArrangedPositions = persons.some(p => p.position?.fixed === true);
+        const hasArrangedPositions = persons.some(p => hasUsablePersistedPosition(p));
         if (hasArrangedPositions) {
             initialLayoutRef.current = { positions: new Map(), clones: new Map() };
             return initialLayoutRef.current;
@@ -161,24 +187,26 @@ function FamilyTreeInner({
 
         const positions = new Map<string, { x: number; y: number }>();
         const clones = new Map<string, string>();
-        
+
         // Simple Top-to-Bottom Grid Layout
         // Use a grid layout to avoid sprawling, max 8 columns based on the scale
         const cols = Math.max(1, Math.min(8, Math.ceil(Math.sqrt(persons.length))));
-        
+        const horizontalGap = Math.max(42, Math.round(adaptiveSizes.nodeWidth * 0.34));
+        const verticalGap = Math.max(48, Math.round(adaptiveSizes.nodeHeight * 0.48));
+
         persons.forEach((p, idx) => {
             const row = Math.floor(idx / cols);
             const col = idx % cols;
             positions.set(p.personId, {
-                x: 50 + col * (NODE_WIDTH + 60),
-                y: 50 + row * (NODE_HEIGHT + 60)
+                x: 50 + col * (adaptiveSizes.nodeWidth + horizontalGap),
+                y: 50 + row * (adaptiveSizes.nodeHeight + verticalGap)
             });
         });
 
         initialLayoutRef.current = { positions, clones };
         clonesRef.current = clones;
         return initialLayoutRef.current;
-    }, [persons]);
+    }, [persons, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
 
     // Ancestry path tracing
     const traceAncestryPath = useCallback((personId: string): Set<string> => {
@@ -206,7 +234,8 @@ function FamilyTreeInner({
         currentHighlighted: Set<string>,
         currentAncestryPath: Set<string>,
         currentScriptMode: string,
-        currentAdaptiveSizes: { nodeWidth: number; nodeHeight: number; shapeSize: number },
+        currentAdaptiveSizes: AdaptiveSizes,
+        currentTextDensityMode: TextDensityMode,
     ) => {
         const rfNodes: Node[] = [];
         const rfEdges: Edge[] = [];
@@ -245,6 +274,9 @@ function FamilyTreeInner({
                     displayName,
                     lontaraFullName,
                     shapeSize: currentAdaptiveSizes.shapeSize,
+                    nodeTextWidth: currentAdaptiveSizes.textWidth,
+                    fontScale: currentAdaptiveSizes.fontScale,
+                    textDensityMode: currentTextDensityMode,
                     scriptMode: currentScriptMode,
                     isSelected: person.personId === currentSelectedId,
                     isHighlighted: currentHighlighted.has(person.personId),
@@ -292,6 +324,9 @@ function FamilyTreeInner({
                     displayName: `${displayName} ⧉`,
                     lontaraFullName,
                     shapeSize: currentAdaptiveSizes.shapeSize,
+                    nodeTextWidth: currentAdaptiveSizes.textWidth,
+                    fontScale: currentAdaptiveSizes.fontScale,
+                    textDensityMode: currentTextDensityMode,
                     scriptMode: currentScriptMode,
                     isSelected: false,
                     isHighlighted: false,
@@ -350,7 +385,7 @@ function FamilyTreeInner({
 
                 // Invisible junction node at midpoint (only for child edge routing)
                 const junctionId = `junction-${coupleKey}`;
-                const midX = (leftPos.x + rightPos.x + NODE_WIDTH) / 2;
+                const midX = (leftPos.x + rightPos.x + currentAdaptiveSizes.nodeWidth) / 2;
                 const midY = (leftPos.y + rightPos.y) / 2 + currentAdaptiveSizes.shapeSize / 2;
 
                 rfNodes.push({
@@ -528,7 +563,7 @@ function FamilyTreeInner({
         }
 
         return { rfNodes, rfEdges };
-    }, [persons]);
+    }, [persons, personsMap]);
 
     // Initialize positions and build React Flow nodes/edges
     useEffect(() => {
@@ -538,7 +573,7 @@ function FamilyTreeInner({
 
         if (!isInitialized) {
             posMap = new Map();
-            const hasArrangedPositions = persons.some(p => p.position?.fixed === true);
+            const hasArrangedPositions = persons.some(p => hasUsablePersistedPosition(p));
 
             if (hasArrangedPositions) {
                 persons.forEach(p => {
@@ -627,6 +662,7 @@ function FamilyTreeInner({
             ancestryPathIds,
             scriptMode || 'both',
             adaptiveSizes,
+            textDensityMode,
         );
 
         setNodes(rfNodes);
@@ -639,7 +675,7 @@ function FamilyTreeInner({
             }, 100);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [persons, isInitialized, selectedPersonId, highlightedSet, ancestryPathIds, scriptMode, adaptiveSizes]);
+    }, [persons, isInitialized, selectedPersonId, highlightedSet, ancestryPathIds, scriptMode, adaptiveSizes, textDensityMode, buildNodesAndEdges]);
 
     // Handle node position changes (drag)
     const handleNodesChange = useCallback((changes: NodeChange<Node>[]) => {
@@ -690,7 +726,7 @@ function FamilyTreeInner({
                             const rightPos = p1.x < p2.x ? p2 : p1;
 
                             // Midpoint between right-handle of left spouse and left-handle of right spouse
-                            const midX = (leftPos.x + rightPos.x + NODE_WIDTH) / 2;
+                            const midX = (leftPos.x + rightPos.x + adaptiveSizes.nodeWidth) / 2;
                             // Stay at vertical midpoint of both spouses (follows the Bezier curve center)
                             const midY = (leftPos.y + rightPos.y) / 2 + adaptiveSizes.shapeSize / 2;
 
@@ -761,22 +797,92 @@ function FamilyTreeInner({
         const pos = positionsRef.current.get(personId);
         if (!pos) return;
 
-        reactFlowInstance.setCenter(pos.x + NODE_WIDTH / 2, pos.y + NODE_HEIGHT / 2, {
+        reactFlowInstance.setCenter(pos.x + adaptiveSizes.nodeWidth / 2, pos.y + adaptiveSizes.nodeHeight / 2, {
             zoom: Math.max(reactFlowInstance.getZoom(), 0.8),
             duration: 500,
         });
         setHighlightedIds([personId]);
-    }, [reactFlowInstance]);
+    }, [reactFlowInstance, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
 
+    const treeAspectRatio = useMemo(() => {
+        const personNodes = nodes.filter(node => node.type === 'male' || node.type === 'female');
+        if (personNodes.length === 0) return NODE_WIDTH / NODE_HEIGHT;
 
-    // ── Paper sizes in mm (portrait) ──
-    const PAPER_SIZES: Record<string, { w: number; h: number }> = {
-        A4: { w: 210, h: 297 },
-        A3: { w: 297, h: 420 },
-        A2: { w: 420, h: 594 },
-        A1: { w: 594, h: 841 },
-        A0: { w: 841, h: 1189 },
-    };
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        personNodes.forEach(node => {
+            minX = Math.min(minX, node.position.x);
+            minY = Math.min(minY, node.position.y);
+            maxX = Math.max(maxX, node.position.x + adaptiveSizes.nodeWidth);
+            maxY = Math.max(maxY, node.position.y + adaptiveSizes.nodeHeight);
+        });
+
+        const width = Math.max(1, maxX - minX);
+        const height = Math.max(1, maxY - minY);
+        return width / height;
+    }, [nodes, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
+
+    // Canvas guide follows paper ratio (A-series), independent from paper size selection.
+    const guideLayout = useMemo(() => {
+        const portraitAspect = 1 / A_SERIES_RATIO;
+        const landscapeAspect = A_SERIES_RATIO;
+        const isLandscape = Math.abs(treeAspectRatio - landscapeAspect) <= Math.abs(treeAspectRatio - portraitAspect);
+
+        return {
+            isLandscape,
+            targetAspect: isLandscape ? landscapeAspect : portraitAspect,
+            pageW: isLandscape ? A_SERIES_RATIO : 1,
+            pageH: isLandscape ? 1 : A_SERIES_RATIO,
+        };
+    }, [treeAspectRatio]);
+
+    // Selected paper size is used only for physical output dimensions.
+    const paperLayout = useMemo(() => {
+        const paper = PAPER_SIZES[exportPaperSize] ?? PAPER_SIZES.A3;
+        const portraitW = Math.min(paper.w, paper.h);
+        const portraitH = Math.max(paper.w, paper.h);
+
+        return {
+            pageW: guideLayout.isLandscape ? portraitH : portraitW,
+            pageH: guideLayout.isLandscape ? portraitW : portraitH,
+            isLandscape: guideLayout.isLandscape,
+            targetAspect: guideLayout.targetAspect,
+        };
+    }, [exportPaperSize, guideLayout]);
+
+    const getTreeBounds = useCallback(() => {
+        const posMap = positionsRef.current;
+        if (posMap.size === 0) return null;
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        posMap.forEach(pos => {
+            minX = Math.min(minX, pos.x);
+            minY = Math.min(minY, pos.y);
+            maxX = Math.max(maxX, pos.x + adaptiveSizes.nodeWidth + 24);
+            maxY = Math.max(maxY, pos.y + adaptiveSizes.nodeHeight + 32);
+        });
+
+        const padding = Math.max(64, Math.round(adaptiveSizes.nodeWidth * 0.36));
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+
+        return {
+            minX,
+            minY,
+            maxX,
+            maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+        };
+    }, [adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
 
     // PDF Export (WYSIWYG — hi-res capture, multi-page, print-quality)
     const handleExportPDF = useCallback(async () => {
@@ -795,21 +901,28 @@ function FamilyTreeInner({
             const prevPosition = container.style.position;
             const prevOverflow = container.style.overflow;
 
-            // Calculate full tree bounds from node positions
-            const posMap = positionsRef.current;
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            posMap.forEach(pos => {
-                minX = Math.min(minX, pos.x);
-                minY = Math.min(minY, pos.y);
-                maxX = Math.max(maxX, pos.x + NODE_WIDTH + 40);
-                maxY = Math.max(maxY, pos.y + NODE_HEIGHT + 60);
-            });
-            const padding = 80;
-            minX -= padding; minY -= padding;
-            maxX += padding; maxY += padding;
+            const bounds = getTreeBounds();
+            if (!bounds) throw new Error('Tree bounds are empty');
 
-            const treeWidth = maxX - minX;
-            const treeHeight = maxY - minY;
+            let { minX, minY, maxX, maxY, width: treeWidth, height: treeHeight } = bounds;
+            const targetAspect = paperLayout.targetAspect;
+            const currentAspect = treeWidth / Math.max(1, treeHeight);
+
+            // Extend capture area to match paper aspect ratio so exported PDF fills page better.
+            if (currentAspect > targetAspect) {
+                const targetHeight = treeWidth / targetAspect;
+                const extra = targetHeight - treeHeight;
+                minY -= extra / 2;
+                maxY += extra / 2;
+            } else {
+                const targetWidth = treeHeight * targetAspect;
+                const extra = targetWidth - treeWidth;
+                minX -= extra / 2;
+                maxX += extra / 2;
+            }
+
+            treeWidth = maxX - minX;
+            treeHeight = maxY - minY;
 
             // Higher zoom = more readable nodes for print
             const exportZoom = persons.length > 150 ? 1.0 : persons.length > 50 ? 1.5 : 2.0;
@@ -915,30 +1028,14 @@ function FamilyTreeInner({
             const imgWidthPx = img.naturalWidth;
             const imgHeightPx = img.naturalHeight;
 
-            // ── Paper dimensions ──
-            const paper = PAPER_SIZES[exportPaperSize] || PAPER_SIZES.A3;
-
-            // Scaling factor for fonts and margins based on A4 reference
-            // A4 is base. A3~1.4x, A2~2x, A1~2.8x, A0~4x
-            const scaleFactors: Record<string, number> = {
-                'A4': 1,
-                'A3': 1.4,
-                'A2': 2,
-                'A1': 2.8,
-                'A0': 4
-            };
-            const s = scaleFactors[exportPaperSize] || 1;
-
-            const imgAspect = imgWidthPx / imgHeightPx;
-            // Auto landscape for wide trees, portrait for tall ones
-            const isLandscape = imgAspect > 1.0;
-            const pageW = isLandscape ? Math.max(paper.w, paper.h) : Math.min(paper.w, paper.h);
-            const pageH = isLandscape ? Math.min(paper.w, paper.h) : Math.max(paper.w, paper.h);
-
-            // Scaled margins
-            const marginTop = 14 * s;
-            const marginBottom = 14 * s;
-            const marginSide = 10 * s;
+            // ── Paper dimensions (stable mm margins across paper sizes) ──
+            const pageW = paperLayout.pageW;
+            const pageH = paperLayout.pageH;
+            const footerBlock = Math.max(12, Math.min(22, pageH * 0.03));
+            const titleBlock = Math.max(10, Math.min(18, pageH * 0.028));
+            const marginTop = titleBlock + 2;
+            const marginBottom = footerBlock + 2;
+            const marginSide = Math.max(6, Math.min(12, pageW * 0.02));
             const contentW = pageW - marginSide * 2;
             const contentH = pageH - marginTop - marginBottom;
 
@@ -949,21 +1046,18 @@ function FamilyTreeInner({
             const xOff = marginSide + (contentW - finalW) / 2;
             const yOff = marginTop + (contentH - finalH) / 2;
 
-            const createdDate = new Date().toLocaleDateString('id-ID', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            });
-
             const pdf = new jsPDF({
-                orientation: isLandscape ? 'landscape' : 'portrait',
+                orientation: paperLayout.isLandscape ? 'landscape' : 'portrait',
                 unit: 'mm',
                 format: [pageW, pageH],
             });
 
             // Header
-            pdf.setFontSize(16 * s);
+            const titleSize = pageW >= 594 ? 18 : pageW >= 420 ? 15 : 13;
+            pdf.setFontSize(titleSize);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(20, 20, 20);
-            pdf.text(familyName, pageW / 2, 10 * s, { align: 'center' });
+            pdf.text(familyName, pageW / 2, Math.max(8, titleBlock * 0.72), { align: 'center' });
 
             // Tree image — full resolution on single page
             pdf.addImage(dataUrl, 'JPEG', xOff, yOff, finalW, finalH, undefined, 'MEDIUM');
@@ -981,13 +1075,12 @@ function FamilyTreeInner({
 
                     // Use actual image aspect ratio for precise sizing
                     const legendAspect = legendImg.naturalWidth / legendImg.naturalHeight;
-                    // Base legend width: 30mm on A4, scales with paper size
-                    const legendW = 30 * s;
+                    const legendW = Math.max(32, Math.min(58, pageW * 0.18));
                     const legendH = legendW / legendAspect;
 
                     // Position: Bottom Left, above footer area
                     const legendX = marginSide;
-                    const legendY = pageH - marginBottom - 12 * s - legendH;
+                    const legendY = pageH - marginBottom - 7 - legendH;
 
                     pdf.addImage(legendUrl, 'PNG', legendX, legendY, legendW, legendH);
                 } catch (e) {
@@ -1004,18 +1097,18 @@ function FamilyTreeInner({
                 hour: '2-digit', minute: '2-digit'
             });
 
-            pdf.setFontSize(9 * s);
+            pdf.setFontSize(9);
             pdf.setFont('helvetica', 'italic');
             pdf.setTextColor(100, 100, 100);
-            pdf.text('Warisan Jejak Keluarga Bugis', pageW / 2, pageH - (10 * s), { align: 'center' });
+            pdf.text('Warisan Jejak Keluarga Bugis', pageW / 2, pageH - (footerBlock * 0.76), { align: 'center' });
 
-            pdf.setFontSize(8 * s);
+            pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
-            pdf.text('Created by wija-ogi.com', pageW / 2, pageH - (6.5 * s), { align: 'center' });
+            pdf.text('Created by wija-ogi.com', pageW / 2, pageH - (footerBlock * 0.44), { align: 'center' });
 
-            pdf.setFontSize(7 * s);
+            pdf.setFontSize(7);
             pdf.setTextColor(150, 150, 150);
-            pdf.text(`${dateStr} ${timeStr}`, pageW / 2, pageH - (3.5 * s), { align: 'center' });
+            pdf.text(`${dateStr} ${timeStr}`, pageW / 2, pageH - (footerBlock * 0.2), { align: 'center' });
             pdf.setTextColor(0, 0, 0);
 
             const safeName = familyName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
@@ -1035,7 +1128,7 @@ function FamilyTreeInner({
         } finally {
             setIsExporting(false);
         }
-    }, [isExporting, persons.length, familyName, reactFlowInstance, exportPaperSize]);
+    }, [isExporting, persons.length, familyName, reactFlowInstance, exportPaperSize, getTreeBounds, paperLayout]);
 
     // MiniMap node colors
     const minimapNodeColor = useCallback((node: Node) => {
@@ -1076,6 +1169,14 @@ function FamilyTreeInner({
 
     return (
         <div ref={reactFlowRef} className="relative h-full w-full">
+            <style>{`
+                @media print {
+                    @page {
+                        size: ${exportPaperSize} ${guideLayout.isLandscape ? 'landscape' : 'portrait'};
+                        margin: 8mm;
+                    }
+                }
+            `}</style>
             {/* Top Bar Container - Responsive */}
             <div className="absolute top-0 left-0 right-0 z-10 p-3 flex flex-col md:flex-row justify-between gap-3 pointer-events-none print:hidden">
 
@@ -1105,6 +1206,41 @@ function FamilyTreeInner({
                         >
                             {isExporting ? '⏳' : '🖨️'} <span className="hidden sm:inline">PDF</span>
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowPaperGuide(prev => !prev)}
+                            className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${showPaperGuide
+                                ? 'bg-teal-50 text-teal-700 border-teal-200'
+                                : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                                }`}
+                            title="Tampilkan batas kanvas auto berdasarkan paper ratio"
+                        >
+                            {showPaperGuide ? 'Guide On' : 'Guide Off'}
+                        </button>
+                        <div className="flex h-8 md:h-9 rounded border border-stone-200 overflow-hidden bg-white">
+                            <button
+                                type="button"
+                                onClick={() => setTextDensityMode('readable')}
+                                className={`px-2.5 md:px-3 text-xs md:text-sm font-medium transition-colors ${textDensityMode === 'readable'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'text-stone-600 hover:bg-stone-50'
+                                    }`}
+                                title="Teks lebih nyaman dibaca (tidak mengubah posisi node)"
+                            >
+                                Readable
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTextDensityMode('compact')}
+                                className={`px-2.5 md:px-3 text-xs md:text-sm font-medium border-l border-stone-200 transition-colors ${textDensityMode === 'compact'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'text-stone-600 hover:bg-stone-50'
+                                    }`}
+                                title="Teks lebih ringkas (tidak mengubah posisi node)"
+                            >
+                                Compact
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1158,11 +1294,21 @@ function FamilyTreeInner({
             </div>
 
             {/* React Flow Canvas */}
-            <div className={`w-full h-full ${lodLevel === 0 ? 'lod-shape-only' : lodLevel === 1 ? 'lod-name-only' : ''}`}>
+            <div className={`relative w-full h-full ${lodLevel === 0 ? 'lod-shape-only' : lodLevel === 1 ? 'lod-name-only' : ''}`}>
                 <style>{`
                 .lod-shape-only .node-text-detail { display: none !important; }
                 .lod-name-only .node-text-extra { display: none !important; }
             `}</style>
+                {showPaperGuide && (
+                    <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4 pt-16 pb-4 print:hidden">
+                        <div
+                            className="h-full w-auto max-w-full rounded-2xl border-2 border-dashed border-teal-400/70 bg-teal-100/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.35)]"
+                            style={{
+                                aspectRatio: `${guideLayout.pageW} / ${guideLayout.pageH}`,
+                            }}
+                        />
+                    </div>
+                )}
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}

@@ -19,6 +19,9 @@ interface FemaleNodeData {
     displayName: string;
     lontaraFullName: string;
     shapeSize: number;
+    nodeTextWidth?: number;
+    fontScale?: number;
+    textDensityMode?: 'readable' | 'compact';
     scriptMode: string;
     isSelected: boolean;
     isHighlighted: boolean;
@@ -32,10 +35,20 @@ interface FemaleNodeData {
     cloneOf?: string;
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 function FemaleNodeComponent({ data }: NodeProps) {
     const d = data as unknown as FemaleNodeData;
     const shapeSize = d.shapeSize || 56;
+    const textWidth = d.nodeTextWidth || 180;
+    const fontScale = d.fontScale || 1;
+    const densityScale = d.textDensityMode === 'compact' ? 0.9 : 1.08;
     const hasTitle = !!d.person.title || !!d.person.reignTitle;
+    const isLongLatinName = d.displayName.length > 28;
+    const effectiveScale = fontScale * densityScale;
+    const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, 11, 18);
+    const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, 10.5, 16.5);
+    const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, 8.5, 11);
 
     return (
         <div
@@ -124,21 +137,29 @@ function FemaleNodeComponent({ data }: NodeProps) {
             </div>
 
             {/* Text below shape */}
-            <div className="node-text-detail text-center w-full px-1" style={{ maxWidth: 140 }}>
+            <div className="node-text-detail text-center w-full px-1.5" style={{ maxWidth: textWidth }}>
                 {/* Reign Title badge */}
                 {d.person.reignTitle && (
-                    <div className="node-text-extra text-[9px] font-semibold text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 mb-0.5 leading-tight">
+                    <div
+                        className="node-text-extra font-semibold text-amber-700 bg-amber-100 rounded px-1.5 py-0.5 mb-0.5 leading-tight"
+                        style={{ fontSize: `${titleBadgeFontSize}px` }}
+                    >
                         👑 {d.person.reignTitle}
                     </div>
                 )}
                 {(d.scriptMode === 'lontara' || d.scriptMode === 'both') && d.lontaraFullName && (
-                    <div className="node-text-extra text-teal-700 font-lontara leading-tight text-[11px]">
+                    <div
+                        className="node-text-extra text-teal-700 font-lontara leading-[1.2] break-words"
+                        style={{ fontSize: `${lontaraFontSize}px` }}
+                    >
                         {d.lontaraFullName}
                     </div>
                 )}
                 {(d.scriptMode === 'latin' || d.scriptMode === 'both') && (
-                    <div className={`font-medium leading-tight text-stone-700 ${d.displayName.length > 25 ? 'text-[10px]' : 'text-xs'
-                        }`}>
+                    <div
+                        className="font-semibold leading-[1.2] text-stone-700 break-words"
+                        style={{ fontSize: `${latinFontSize}px` }}
+                    >
                         {d.displayName}
                     </div>
                 )}
