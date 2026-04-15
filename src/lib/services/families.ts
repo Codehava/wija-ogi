@@ -184,7 +184,7 @@ export async function getUserRole(
  */
 export async function updateFamily(
     familyId: string,
-    updates: Partial<Pick<Family, 'name' | 'displayName' | 'settings'>>
+    updates: Partial<Pick<Family, 'name' | 'displayName'>> & { settings?: Partial<Family['settings']> }
 ): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = { updatedAt: new Date() };

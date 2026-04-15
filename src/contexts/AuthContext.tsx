@@ -56,7 +56,7 @@ interface AuthProviderProps {
 }
 
 function AuthProviderInner({ children }: AuthProviderProps) {
-    const { data: session, status } = useSession();
+    const { data: session, status, update } = useSession();
     const [error, setError] = useState<string | null>(null);
 
     const loading = status === 'loading';
@@ -153,17 +153,58 @@ function AuthProviderInner({ children }: AuthProviderProps) {
         }
     }, []);
 
-    const forgotPassword = useCallback(async (_email: string) => {
-        // TODO: Implement password reset via API route
-        setError('Password reset not yet implemented');
-        throw new Error('Password reset not yet implemented');
+    const forgotPassword = useCallback(async (email: string) => {
+        try {
+            setError(null);
+            const response = await fetch('/api/user/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({ error: 'Failed to request password reset' }));
+                throw new Error(body.error || 'Failed to request password reset');
+            }
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to request password reset';
+            setError(message);
+            throw err;
+        }
     }, []);
 
-    const handleUpdateProfile = useCallback(async (_updates: { displayName?: string; photoURL?: string }) => {
-        // TODO: Implement profile update via API route
-        setError('Profile update not yet implemented');
-        throw new Error('Profile update not yet implemented');
-    }, []);
+    const handleUpdateProfile = useCallback(async (updates: { displayName?: string; photoURL?: string }) => {
+        try {
+            if (!user?.uid) {
+                throw new Error('Unauthorized');
+            }
+            setError(null);
+
+            const response = await fetch('/api/user/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+            });
+
+            if (!response.ok) {
+                const body = await response.json().catch(() => ({ error: 'Failed to update profile' }));
+                throw new Error(body.error || 'Failed to update profile');
+            }
+
+            const result = await response.json();
+            await update({
+                user: {
+                    ...session?.user,
+                    name: result.displayName ?? session?.user?.name,
+                    image: result.photoURL ?? session?.user?.image,
+                },
+            });
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to update profile';
+            setError(message);
+            throw err;
+        }
+    }, [session?.user, update, user?.uid]);
 
     const hasRole = useCallback(async (familyId: string, roles: MemberRole[]): Promise<boolean> => {
         if (!user?.uid) return false;

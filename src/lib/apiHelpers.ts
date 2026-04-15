@@ -22,7 +22,7 @@ const ROLE_HIERARCHY: Record<MemberRole, number> = {
 };
 
 type AuthResult =
-    | { ok: true; userId: string; role: MemberRole }
+    | { ok: true; userId: string; role: MemberRole; userName: string; userEmail: string | null }
     | { ok: false; response: NextResponse };
 
 /**
@@ -53,7 +53,13 @@ export async function requireRole(
         };
     }
 
-    return { ok: true, userId: session.user.id, role };
+    return {
+        ok: true,
+        userId: session.user.id,
+        role,
+        userName: session.user.name || session.user.email || session.user.id,
+        userEmail: session.user.email || null,
+    };
 }
 
 /**

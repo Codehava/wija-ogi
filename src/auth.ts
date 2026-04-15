@@ -170,15 +170,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             return true;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger, session }) {
             if (user) {
                 token.id = user.id;
+                token.name = user.name;
+                token.picture = user.image;
+            }
+
+            if (trigger === 'update' && session?.user) {
+                if (session.user.name !== undefined) {
+                    token.name = session.user.name;
+                }
+                if (session.user.image !== undefined) {
+                    token.picture = session.user.image;
+                }
             }
             return token;
         },
         async session({ session, token }) {
             if (token?.id) {
                 session.user.id = token.id as string;
+            }
+            if (typeof token?.name === 'string') {
+                session.user.name = token.name;
+            }
+            if (typeof token?.picture === 'string' || token?.picture === null) {
+                session.user.image = token.picture as string | null;
             }
             return session;
         },

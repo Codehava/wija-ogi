@@ -3,7 +3,7 @@
 // React hooks for authentication and authorization
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { MemberRole } from '@/types';
 import { familiesApi } from '@/lib/api';
@@ -19,10 +19,15 @@ export function useHasRole(familyId: string | null, roles: MemberRole[]) {
     const { user } = useAuth();
     const [hasRole, setHasRole] = useState(false);
     const [loading, setLoading] = useState(true);
+    const rolesKey = [...roles].sort().join('|');
+    const normalizedRoles = useMemo(
+        () => (rolesKey ? (rolesKey.split('|') as MemberRole[]) : []),
+        [rolesKey]
+    );
 
     useEffect(() => {
         async function checkRole() {
-            if (!user || !familyId) {
+            if (!user?.uid || !familyId) {
                 setHasRole(false);
                 setLoading(false);
                 return;
@@ -32,12 +37,12 @@ export function useHasRole(familyId: string | null, roles: MemberRole[]) {
                 const { role } = await familiesApi.getUserRole(familyId);
 
                 if (role) {
-                    setHasRole(roles.includes(role));
+                    setHasRole(normalizedRoles.includes(role));
                 } else {
                     // Fallback: check if user is the family owner directly
                     const family = await familiesApi.getFamily(familyId);
 
-                    if (family && family.ownerId === user.uid && roles.includes('owner')) {
+                    if (family && family.ownerId === user.uid && normalizedRoles.includes('owner')) {
                         setHasRole(true);
                     } else {
                         setHasRole(false);
@@ -51,8 +56,8 @@ export function useHasRole(familyId: string | null, roles: MemberRole[]) {
             }
         }
 
-        checkRole();
-    }, [user, familyId, roles]);
+        void checkRole();
+    }, [user?.uid, familyId, normalizedRoles]);
 
     return { hasRole, loading };
 }
@@ -92,7 +97,7 @@ export function useIsSuperAdmin() {
 
     useEffect(() => {
         async function fetchSuperAdminRole() {
-            if (!user) {
+            if (!user?.uid) {
                 setIsSuperAdmin(false);
                 setLoading(false);
                 return;
@@ -115,7 +120,7 @@ export function useIsSuperAdmin() {
 
         setLoading(true);
         void fetchSuperAdminRole();
-    }, [user]);
+    }, [user?.uid]);
 
     return { isSuperAdmin, loading };
 }

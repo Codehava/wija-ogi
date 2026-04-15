@@ -93,6 +93,8 @@ export const MarriageDetailsSchema = z.object({
     marriageOrder: z.number().int().min(1).max(10).optional(),
 });
 
+export const UpdateMarriageDetailsSchema = MarriageDetailsSchema.partial();
+
 export const ParentChildDetailsSchema = z.object({
     biologicalParent: z.boolean(),
 });
@@ -115,15 +117,37 @@ export const CreateRelationshipSchema = z.object({
 export const CreateInvitationSchema = z.object({
     familyId: z.string().uuid('Invalid family ID'),
     email: z.string().email('Invalid email address').max(254),
-    role: MemberRoleSchema,
+    role: z.enum(['admin', 'editor', 'viewer']),
 });
+
+export const CheckInvitationSchema = z.object({
+    familyId: z.string().uuid('Invalid family ID'),
+    email: z.string().email('Invalid email address').max(254),
+});
+
+export const ForgotPasswordSchema = z.object({
+    email: z.string().email('Invalid email address').max(254),
+});
+
+export const ResetPasswordSchema = z.object({
+    token: z.string().min(20, 'Invalid reset token'),
+    newPassword: z.string().min(8, 'Password must be at least 8 characters').max(128),
+});
+
+export const UpdateUserProfileSchema = z.object({
+    displayName: z.string().max(255).trim().optional(),
+    photoURL: z.string().url('Invalid photo URL').max(500).optional(),
+}).refine(
+    (data) => data.displayName !== undefined || data.photoURL !== undefined,
+    { message: 'At least one profile field is required' }
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MEMBER SCHEMAS
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const UpdateMemberRoleSchema = z.object({
-    role: MemberRoleSchema,
+    role: z.enum(['admin', 'editor', 'viewer']),
 });
 
 export const SpouseLinkSchema = z.object({
@@ -133,6 +157,15 @@ export const SpouseLinkSchema = z.object({
 export const ParentChildLinkSchema = z.object({
     childId: z.string().uuid('Invalid child person ID'),
 });
+
+export const UpdateLontaraNameSchema = z.object({
+    first: z.string().max(200).trim().optional(),
+    middle: z.string().max(200).trim().optional(),
+    last: z.string().max(200).trim().optional(),
+}).refine(
+    (data) => data.first !== undefined || data.middle !== undefined || data.last !== undefined,
+    { message: 'At least one Lontara name field is required' }
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER

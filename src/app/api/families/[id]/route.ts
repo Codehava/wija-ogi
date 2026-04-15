@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getFamily, updateFamily, deleteFamily } from '@/lib/services/families';
 import { safeErrorResponse, requireRole, requireMember } from '@/lib/apiHelpers';
+import { UpdateFamilySchema, validateInput } from '@/lib/validation';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -30,8 +31,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         const authResult = await requireRole(id, 'admin');
         if (!authResult.ok) return authResult.response;
 
-        const updates = await request.json();
-        await updateFamily(id, updates);
+        const raw = await request.json();
+        const validated = validateInput(UpdateFamilySchema, raw);
+        if (!validated.success) {
+            return NextResponse.json({ error: validated.error }, { status: 400 });
+        }
+
+        await updateFamily(id, validated.data);
         return NextResponse.json({ success: true });
     } catch (error) {
         return safeErrorResponse(error, 'Failed to update family');

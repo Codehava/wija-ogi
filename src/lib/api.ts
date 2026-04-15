@@ -69,7 +69,7 @@ export const familiesApi = {
         fetchJson<Family>(`/api/families/${familyId}`),
 
     /** Update a family */
-    updateFamily: (familyId: string, updates: Partial<Pick<Family, 'name' | 'displayName' | 'settings'>>) =>
+    updateFamily: (familyId: string, updates: Partial<Pick<Family, 'name' | 'displayName'>> & { settings?: Partial<Family['settings']> }) =>
         fetchVoid(`/api/families/${familyId}`, {
             method: 'PATCH',
             body: JSON.stringify(updates),

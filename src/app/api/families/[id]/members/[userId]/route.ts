@@ -2,7 +2,7 @@
 // DELETE /api/families/[id]/members/[userId] — removeFamilyMember (admin+)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { updateMemberRole, removeFamilyMember } from '@/lib/services/families';
+import { updateMemberRole, removeFamilyMember, getUserRole } from '@/lib/services/families';
 import { safeErrorResponse, requireRole } from '@/lib/apiHelpers';
 import { UpdateMemberRoleSchema, validateInput } from '@/lib/validation';
 
@@ -20,6 +20,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
             return NextResponse.json({ error: validated.error }, { status: 400 });
         }
 
+        const targetRole = await getUserRole(id, userId);
+        if (!targetRole) {
+            return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+        }
+        if (targetRole === 'owner' || targetRole === 'superadmin') {
+            return NextResponse.json({ error: 'Owner role cannot be changed from this endpoint' }, { status: 403 });
+        }
+
         await updateMemberRole(id, userId, validated.data.role);
         return NextResponse.json({ success: true });
     } catch (error) {
@@ -35,6 +43,18 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
         const { id, userId } = await params;
         const authResult = await requireRole(id, 'admin');
         if (!authResult.ok) return authResult.response;
+
+        if (userId === authResult.userId) {
+            return NextResponse.json({ error: 'Cannot remove your own account from family' }, { status: 403 });
+        }
+
+        const targetRole = await getUserRole(id, userId);
+        if (!targetRole) {
+            return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+        }
+        if (targetRole === 'owner' || targetRole === 'superadmin') {
+            return NextResponse.json({ error: 'Owner account cannot be removed from this endpoint' }, { status: 403 });
+        }
 
         await removeFamilyMember(id, userId);
         return NextResponse.json({ success: true });

@@ -9,6 +9,8 @@ import { invitations, treeMembers, trees } from '@/db/schema';
 import { sql } from 'drizzle-orm';
 import type { Invitation, MemberRole } from '@/types';
 
+const ALLOWED_INVITATION_ROLES = ['admin', 'editor', 'viewer'] as const;
+
 // ─────────────────────────────────────────────────────────────────────────────────
 // HELPER
 // ─────────────────────────────────────────────────────────────────────────────────
@@ -44,6 +46,10 @@ export interface CreateInvitationInput {
 }
 
 export async function createInvitation(input: CreateInvitationInput): Promise<Invitation> {
+    if (!ALLOWED_INVITATION_ROLES.includes(input.role as typeof ALLOWED_INVITATION_ROLES[number])) {
+        throw new Error('Invalid invitation role');
+    }
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + (input.expiresInDays || 7));
 
@@ -109,46 +115,73 @@ export async function acceptInvitation(
     invitationId: string,
     userId: string,
     userDisplayName: string,
-    _userEmail: string,
+    userEmail: string,
     _userPhotoUrl?: string
 ): Promise<void> {
-    const invitation = await getInvitation(invitationId);
+    await db.transaction(async (tx) => {
+        const [invitationRow] = await tx
+            .select()
+            .from(invitations)
+            .where(eq(invitations.id, invitationId))
+            .limit(1);
 
-    if (!invitation) throw new Error('Invitation not found');
-    if (invitation.status !== 'pending') throw new Error('Invitation is no longer valid');
+        if (!invitationRow) throw new Error('Invitation not found');
+        const invitation = dbToInvitation(invitationRow);
+        if (invitation.email.toLowerCase() !== userEmail.toLowerCase()) {
+            throw new Error('Invitation email does not match authenticated user');
+        }
 
-    const expiresDate = invitation.expiresAt instanceof Date ? invitation.expiresAt : new Date(invitation.expiresAt);
-    if (expiresDate < new Date()) {
-        await db
+        // Idempotent accept: if already accepted, treat as success.
+        if (invitation.status === 'accepted') {
+            return;
+        }
+        if (invitation.status !== 'pending') {
+            throw new Error('Invitation is no longer valid');
+        }
+
+        const expiresDate = invitation.expiresAt instanceof Date ? invitation.expiresAt : new Date(invitation.expiresAt);
+        if (expiresDate < new Date()) {
+            await tx
+                .update(invitations)
+                .set({ status: 'expired' })
+                .where(eq(invitations.id, invitationId));
+            throw new Error('Invitation has expired');
+        }
+
+        if (!ALLOWED_INVITATION_ROLES.includes(invitation.role as typeof ALLOWED_INVITATION_ROLES[number])) {
+            throw new Error('Invitation role is invalid');
+        }
+
+        const inserted = await tx
+            .insert(treeMembers)
+            .values({
+                treeId: invitation.familyId,
+                userId,
+                role: invitation.role,
+                displayName: userDisplayName,
+                invitedBy: invitation.invitedBy,
+            })
+            .onConflictDoNothing({
+                target: [treeMembers.treeId, treeMembers.userId],
+            })
+            .returning({ id: treeMembers.id });
+
+        // Only increment count for a new membership row.
+        if (inserted.length > 0) {
+            await tx
+                .update(trees)
+                .set({
+                    memberCount: sql`${trees.memberCount} + 1`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(trees.id, invitation.familyId));
+        }
+
+        await tx
             .update(invitations)
-            .set({ status: 'expired' })
+            .set({ status: 'accepted', respondedAt: new Date() })
             .where(eq(invitations.id, invitationId));
-        throw new Error('Invitation has expired');
-    }
-
-    // Add user as tree member
-    await db.insert(treeMembers).values({
-        treeId: invitation.familyId,
-        userId,
-        role: invitation.role,
-        displayName: userDisplayName,
-        invitedBy: invitation.invitedBy,
     });
-
-    // Update tree member count
-    await db
-        .update(trees)
-        .set({
-            memberCount: sql`${trees.memberCount} + 1`,
-            updatedAt: new Date(),
-        })
-        .where(eq(trees.id, invitation.familyId));
-
-    // Update invitation status
-    await db
-        .update(invitations)
-        .set({ status: 'accepted', respondedAt: new Date() })
-        .where(eq(invitations.id, invitationId));
 }
 
 export async function declineInvitation(invitationId: string): Promise<void> {
