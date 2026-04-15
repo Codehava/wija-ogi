@@ -166,17 +166,17 @@ function AuthProviderInner({ children }: AuthProviderProps) {
     }, []);
 
     const hasRole = useCallback(async (familyId: string, roles: MemberRole[]): Promise<boolean> => {
-        if (!user) return false;
+        if (!user?.uid) return false;
 
         try {
-            const response = await fetch(`/api/trees/${familyId}/role`);
+            const response = await fetch(`/api/families/${familyId}/role`);
             if (!response.ok) return false;
             const data = await response.json();
             return roles.includes(data.role);
         } catch {
             return false;
         }
-    }, [user]);
+    }, [user?.uid]);
 
     const clearError = useCallback(() => {
         setError(null);

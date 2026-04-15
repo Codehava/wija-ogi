@@ -11,14 +11,13 @@ import Link from 'next/link';
 import { useFamilyTree } from '@/hooks/useFirestore';
 import { useCanEdit } from '@/hooks/useAuth';
 import { useAuth } from '@/contexts/AuthContext';
-import { Person, ScriptMode, CreatePersonInput, Gender } from '@/types';
+import { ScriptMode, CreatePersonInput, Gender } from '@/types';
 import { personsApi } from '@/lib/api';
 import { PersonCard } from '@/components/person/PersonCard';
 import { PersonForm } from '@/components/person/PersonForm';
 import { DualScriptDisplay } from '@/components/aksara/DualScriptDisplay';
 import { Input, Select } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { transliterateLatin } from '@/lib/transliteration/engine';
 
 type SortBy = 'name' | 'birthDate' | 'generation';
 type FilterGender = 'all' | Gender;
@@ -36,7 +35,7 @@ export default function MembersPage() {
     const [sortBy, setSortBy] = useState<SortBy>('name');
     const [filterGender, setFilterGender] = useState<FilterGender>('all');
     const [filterLiving, setFilterLiving] = useState<'all' | 'living' | 'deceased'>('all');
-    const [scriptMode, setScriptMode] = useState<ScriptMode>('both');
+    const [scriptMode] = useState<ScriptMode>('both');
     const [showPersonForm, setShowPersonForm] = useState(false);
     const [formLoading, setFormLoading] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -123,8 +122,6 @@ export default function MembersPage() {
             </div>
         );
     }
-
-    const familyLontara = transliterateLatin(family.name).lontara;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-stone-100 via-teal-50 to-cyan-50">

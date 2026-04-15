@@ -6,6 +6,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Image from 'next/image';
 import { clsx } from 'clsx';
 import { Person, ScriptMode } from '@/types';
 import { transliterateLatin } from '@/lib/transliteration/engine';
@@ -109,11 +110,14 @@ export function PersonNode({
                         ) : null}
                     </svg>
                     {person.photoUrl && (
-                        <img
+                        <Image
                             src={person.photoUrl}
                             alt={person.firstName}
+                            fill
+                            sizes={`${shapeSize}px`}
                             className="absolute inset-0 w-full h-full object-cover"
                             style={{ clipPath: 'polygon(50% 90%, 10% 20%, 90% 20%)' }}
+                            unoptimized
                         />
                     )}
                 </div>
@@ -134,10 +138,13 @@ export function PersonNode({
                     style={{ width: shapeSize, height: shapeSize }}
                 >
                     {person.photoUrl ? (
-                        <img
+                        <Image
                             src={person.photoUrl}
                             alt={person.firstName}
+                            width={shapeSize}
+                            height={shapeSize}
                             className="w-full h-full object-cover"
+                            unoptimized
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-white text-lg">

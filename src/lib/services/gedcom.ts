@@ -4,8 +4,8 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 import { db } from '@/db';
-import { persons, relationships, trees, sources, media } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { persons, relationships, trees } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { transliterateName } from '@/lib/transliteration/engine';
 
@@ -554,7 +554,7 @@ export async function exportGedcom(treeId: string): Promise<string> {
     const parentChildRels = allRelationships.filter(r => r.type === 'parent-child');
     for (const rel of parentChildRels) {
         // Find which family this parent belongs to
-        for (const [famXref, fam] of famMap.entries()) {
+        for (const [, fam] of famMap.entries()) {
             if (fam.husbId === rel.person1Id || fam.wifeId === rel.person1Id) {
                 if (!fam.childIds.includes(rel.person2Id)) {
                     fam.childIds.push(rel.person2Id);
@@ -680,7 +680,7 @@ export function validateGedcom(content: string): GedcomValidationResult {
                 sources: records.filter(r => r.tag === 'SOUR').length,
             },
         };
-    } catch (error) {
+    } catch {
         return {
             valid: false,
             summary: { totalRecords: 0, persons: 0, families: 0, sources: 0 },

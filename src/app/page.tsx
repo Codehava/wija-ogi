@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeSelector } from '@/contexts/ThemeContext';
 import { useUserFamilies } from '@/hooks/useFirestore';
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { HeroSection } from '@/components/landing/HeroSection';
 import { PhilosophySection } from '@/components/landing/PhilosophySection';
@@ -34,15 +35,6 @@ export default function HomePage() {
     const [error, setError] = useState('');
 
     const loading = authLoading || familiesLoading;
-
-    // Stats for landing page
-    const [stats, setStats] = useState<{ totalPersons: number; totalFamilies: number } | null>(null);
-    useEffect(() => {
-        fetch('/api/stats')
-            .then(res => res.json())
-            .then(data => setStats(data))
-            .catch(() => { });
-    }, []);
 
     // Transliterate WIJA for display
     const wijaLontara = transliterateLatin('wija').lontara;
@@ -127,10 +119,13 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto px-4 py-6">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <img
+                            <Image
                                 src="/logo.png"
                                 alt="WIJA Logo"
+                                width={56}
+                                height={56}
                                 className="w-14 h-14 rounded-xl object-contain bg-white/10 p-1"
+                                priority
                             />
                             <div>
                                 <h1 className="text-2xl font-bold flex items-center gap-2">

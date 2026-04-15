@@ -5,7 +5,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Family, Person, Relationship } from '@/types';
+import { Family, Person } from '@/types';
 import { familiesApi, personsApi, relationshipsApi } from '@/lib/api';
 import { calculateAllGenerationsFromMap, findRootAncestor, getGenerationStats } from '@/lib/generation/calculator';
 import { useAuth } from '@/contexts/AuthContext';
@@ -204,7 +204,7 @@ export function useFamilyTree(familyId: string | null) {
     const personGenerations = useMemo(() => {
         if (!rootAncestor) return new Map<string, number>();
         return calculateAllGenerationsFromMap(rootAncestor.personId, personsMap);
-    }, [persons, rootAncestor, personsMap]);
+    }, [rootAncestor, personsMap]);
 
     // Calculate stats
     const stats = useMemo(() => {

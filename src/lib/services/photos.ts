@@ -131,7 +131,7 @@ export async function deletePersonPhoto(
 
     try {
         await deleteFile(key);
-    } catch (error: any) {
+    } catch {
         // Ignore if file doesn't exist
         console.warn('[Photo Delete] Photo not found, skipping:', key);
     }

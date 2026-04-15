@@ -293,8 +293,10 @@ export function getDefaultExportOptions(): ExportOptions {
     };
 }
 
-export default {
+const exportService = {
     prepareExportData,
     generateTreeSVG,
     getDefaultExportOptions
 };
+
+export default exportService;

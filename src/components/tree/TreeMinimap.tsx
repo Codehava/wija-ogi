@@ -42,7 +42,7 @@ const NODE_HEIGHT = 100;
 export function TreeMinimap({
     positions,
     persons,
-    canvasSize,
+    canvasSize: _canvasSize,
     viewport,
     onNavigate,
     className

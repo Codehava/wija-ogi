@@ -6,12 +6,11 @@
 'use client';
 
 import { useState } from 'react';
-import { MemberRole, Invitation } from '@/types';
+import { MemberRole } from '@/types';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { invitationsApi } from '@/lib/api';
-import type { CreateInvitationInput } from '@/lib/services/invitations';
 
 export interface InviteMemberFormProps {
     isOpen: boolean;

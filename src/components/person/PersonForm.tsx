@@ -6,7 +6,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { clsx } from 'clsx';
 import { CreatePersonInput, Gender, NobilityTitle } from '@/types';
 import { transliterateLatin } from '@/lib/transliteration/engine';
 import { Input, Select } from '@/components/ui/Input';

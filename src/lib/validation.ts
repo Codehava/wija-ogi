@@ -50,6 +50,21 @@ export const CreatePersonSchema = z.object({
 
 export const UpdatePersonSchema = CreatePersonSchema.partial();
 
+export const PositionSchema = z.object({
+    x: z.number().finite().min(-100000).max(100000),
+    y: z.number().finite().min(-100000).max(100000),
+    fixed: z.boolean().optional(),
+});
+
+export const BatchPositionsSchema = z.object({
+    positions: z.record(
+        z.string().uuid('Invalid person ID'),
+        PositionSchema.omit({ fixed: true })
+    ).refine((entries) => Object.keys(entries).length > 0, {
+        message: 'Positions payload cannot be empty',
+    }),
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // FAMILY SCHEMAS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -109,6 +124,14 @@ export const CreateInvitationSchema = z.object({
 
 export const UpdateMemberRoleSchema = z.object({
     role: MemberRoleSchema,
+});
+
+export const SpouseLinkSchema = z.object({
+    person2Id: z.string().uuid('Invalid spouse person ID'),
+});
+
+export const ParentChildLinkSchema = z.object({
+    childId: z.string().uuid('Invalid child person ID'),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

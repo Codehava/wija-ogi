@@ -22,7 +22,7 @@ export const LontaraInput = forwardRef<HTMLInputElement, LontaraInputProps>(
         const [localValue, setLocalValue] = useState(String(value || ''));
         const [showVirtualKeyboard, setShowVirtualKeyboard] = useState(false);
 
-        const { lontara, details } = useMemo(() => {
+        const { lontara } = useMemo(() => {
             return transliterateLatin(localValue);
         }, [localValue]);
 

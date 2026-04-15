@@ -35,6 +35,14 @@ export async function POST(request: NextRequest, { params }: Params) {
         const relationship = await createRelationship(id, validated.data);
         return NextResponse.json(relationship, { status: 201 });
     } catch (error) {
+        if (error instanceof Error) {
+            if (error.message.includes('sudah ada')) {
+                return NextResponse.json({ error: error.message }, { status: 409 });
+            }
+            if (error.message.includes('tidak valid')) {
+                return NextResponse.json({ error: error.message }, { status: 400 });
+            }
+        }
         return safeErrorResponse(error, 'Failed to create relationship');
     }
 }

@@ -28,7 +28,6 @@ import jsPDF from 'jspdf';
 import { toPng, toJpeg } from 'html-to-image';
 import toast from 'react-hot-toast';
 import { Person, Relationship, ScriptMode } from '@/types';
-import { findRootAncestor, calculateAllGenerations } from '@/lib/generation/calculator';
 import { TreeSearch } from './TreeSearch';
 import { MaleNode } from './nodes/MaleNode';
 import { FemaleNode } from './nodes/FemaleNode';
@@ -62,6 +61,20 @@ type AdaptiveSizes = {
     fontScale: number;
 };
 type TextDensityMode = 'readable' | 'compact';
+type FlowRect = {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    width: number;
+    height: number;
+};
+type SavedView = {
+    id: string;
+    name: string;
+    viewport: Viewport;
+    createdAt: string;
+};
 
 // Adaptive sizing
 function getAdaptiveSizes(personCount: number): AdaptiveSizes {
@@ -98,6 +111,25 @@ function hasUsablePersistedPosition(person: Person): boolean {
     return person.position.x !== 0 || person.position.y !== 0;
 }
 
+function clonePositionMap(map: Map<string, { x: number; y: number }>): Map<string, { x: number; y: number }> {
+    return new Map(
+        Array.from(map.entries()).map(([id, pos]) => [id, { x: pos.x, y: pos.y }])
+    );
+}
+
+function arePositionMapsEqual(
+    a: Map<string, { x: number; y: number }>,
+    b: Map<string, { x: number; y: number }>
+): boolean {
+    if (a.size !== b.size) return false;
+    for (const [id, posA] of a.entries()) {
+        const posB = b.get(id);
+        if (!posB) return false;
+        if (Math.abs(posA.x - posB.x) > 0.5 || Math.abs(posA.y - posB.y) > 0.5) return false;
+    }
+    return true;
+}
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -105,11 +137,11 @@ function hasUsablePersistedPosition(person: Person): boolean {
 // ═══════════════════════════════════════════════════════════════════════════════
 function FamilyTreeInner({
     persons,
-    relationships,
+    relationships: _relationships,
     scriptMode = 'both',
     onPersonClick,
     selectedPersonId,
-    editable = false,
+    editable: _editable = false,
     onAddPerson,
     familyName = 'Pohon Keluarga',
     familyId,
@@ -128,12 +160,20 @@ function FamilyTreeInner({
     const [ancestryPathIds, setAncestryPathIds] = useState<Set<string>>(new Set());
     const [hoveredPerson, setHoveredPerson] = useState<{ person: Person; x: number; y: number } | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [showPrintPreview, setShowPrintPreview] = useState(false);
     const [exportPaperSize, setExportPaperSize] = useState<'A4' | 'A3' | 'A2' | 'A1' | 'A0'>('A3');
     const [showPaperGuide, setShowPaperGuide] = useState(true);
+    const [enforceCanvasBoundary, setEnforceCanvasBoundary] = useState(false);
     const [textDensityMode, setTextDensityMode] = useState<TextDensityMode>('readable');
     const [currentViewport, setCurrentViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
-    const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
     const [lodLevel, setLodLevel] = useState<number>(2); // P3b: 0=shape, 1=name, 2=full
+    const [lockedGuideFlowRect, setLockedGuideFlowRect] = useState<FlowRect | null>(null);
+    const [isFocusMode, setIsFocusMode] = useState(false);
+    const [focusRootPersonId, setFocusRootPersonId] = useState<string | null>(null);
+    const [focusBranchIds, setFocusBranchIds] = useState<Set<string>>(new Set());
+    const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+    const [selectedSavedViewId, setSelectedSavedViewId] = useState('');
+    const [historyMeta, setHistoryMeta] = useState({ index: -1, total: 0 });
 
     // Refs
     const initialLayoutRef = useRef<LayoutResult | null>(null);
@@ -142,6 +182,9 @@ function FamilyTreeInner({
     const clonesRef = useRef<Map<string, string>>(new Map());  // R11 clone mappings
     const draggingNodeIdsRef = useRef<Set<string>>(new Set());
     const lastDraggedTimeRef = useRef<Map<string, number>>(new Map());
+    const historyStackRef = useRef<Map<string, { x: number; y: number }>[]>([]);
+    const historyIndexRef = useRef(-1);
+    const applyingHistoryRef = useRef(false);
 
     // Adaptive sizes
     const adaptiveSizes = useMemo(() => getAdaptiveSizes(persons.length), [persons.length]);
@@ -156,6 +199,57 @@ function FamilyTreeInner({
     // Highlighted IDs set
     const highlightedSet = useMemo(() => new Set(highlightedIds), [highlightedIds]);
 
+    const viewsStorageKey = useMemo(
+        () => `wija:saved-views:${familyId || 'default'}`,
+        [familyId]
+    );
+
+    const syncHistoryMeta = useCallback((index: number, total: number) => {
+        setHistoryMeta({ index, total });
+    }, []);
+
+    const pushHistorySnapshot = useCallback((posMap: Map<string, { x: number; y: number }>) => {
+        if (applyingHistoryRef.current) return;
+
+        const nextSnapshot = clonePositionMap(posMap);
+        const currentIndex = historyIndexRef.current;
+        const currentStack = historyStackRef.current;
+        const currentSnapshot = currentIndex >= 0 ? currentStack[currentIndex] : null;
+        if (currentSnapshot && arePositionMapsEqual(currentSnapshot, nextSnapshot)) return;
+
+        const nextStack = currentStack.slice(0, currentIndex + 1);
+        nextStack.push(nextSnapshot);
+        const MAX_HISTORY = 60;
+        while (nextStack.length > MAX_HISTORY) {
+            nextStack.shift();
+        }
+
+        historyStackRef.current = nextStack;
+        historyIndexRef.current = nextStack.length - 1;
+        syncHistoryMeta(historyIndexRef.current, nextStack.length);
+    }, [syncHistoryMeta]);
+
+    const traceBranchDescendants = useCallback((personId: string): Set<string> => {
+        const branch = new Set<string>();
+        const queue = [personId];
+
+        while (queue.length > 0) {
+            const currentId = queue.shift()!;
+            if (branch.has(currentId)) continue;
+            branch.add(currentId);
+
+            const person = personsMap.get(currentId);
+            if (!person) continue;
+
+            person.relationships.spouseIds.forEach(spouseId => branch.add(spouseId));
+            person.relationships.childIds.forEach(childId => {
+                if (!branch.has(childId)) queue.push(childId);
+            });
+        }
+
+        return branch;
+    }, [personsMap]);
+
     // Get saved positions
     const savedPositions = useMemo(() => {
         const map = new Map<string, { x: number; y: number }>();
@@ -166,6 +260,30 @@ function FamilyTreeInner({
         });
         return map;
     }, [persons]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const raw = localStorage.getItem(viewsStorageKey);
+            if (!raw) {
+                setSavedViews([]);
+                setSelectedSavedViewId('');
+                return;
+            }
+            const parsed = JSON.parse(raw) as SavedView[];
+            if (!Array.isArray(parsed)) return;
+            setSavedViews(parsed);
+            setSelectedSavedViewId(parsed[0]?.id ?? '');
+        } catch {
+            setSavedViews([]);
+            setSelectedSavedViewId('');
+        }
+    }, [viewsStorageKey]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        localStorage.setItem(viewsStorageKey, JSON.stringify(savedViews));
+    }, [savedViews, viewsStorageKey]);
 
     // Detect GEDCOM imports
     useEffect(() => {
@@ -235,6 +353,7 @@ function FamilyTreeInner({
         currentSelectedId: string | null | undefined,
         currentHighlighted: Set<string>,
         currentAncestryPath: Set<string>,
+        currentFocusBranch: Set<string>,
         currentScriptMode: string,
         currentAdaptiveSizes: AdaptiveSizes,
         currentTextDensityMode: TextDensityMode,
@@ -284,6 +403,8 @@ function FamilyTreeInner({
                     isHighlighted: currentHighlighted.has(person.personId),
                     isOnAncestryPath: currentAncestryPath.has(person.personId),
                     hasAncestryActive: currentAncestryPath.size > 0,
+                    isInFocusBranch: currentFocusBranch.has(person.personId),
+                    hasFocusBranchActive: currentFocusBranch.size > 0,
                     onHover: (rect: DOMRect) => {
                         setHoveredPerson({ person, x: rect.right + 8, y: rect.top });
                     },
@@ -334,6 +455,8 @@ function FamilyTreeInner({
                     isHighlighted: false,
                     isOnAncestryPath: false,
                     hasAncestryActive: false,
+                    isInFocusBranch: currentFocusBranch.has(originalId),
+                    hasFocusBranchActive: currentFocusBranch.size > 0,
                     isClone: true,
                     cloneOf: originalId,
                     onHover: () => { },
@@ -572,6 +695,7 @@ function FamilyTreeInner({
         if (persons.length === 0) return;
 
         let posMap: Map<string, { x: number; y: number }>;
+        let hasChanges = false;
 
         if (!isInitialized) {
             posMap = new Map();
@@ -617,7 +741,6 @@ function FamilyTreeInner({
         } else {
             // Check for new persons and synced positions from server
             posMap = new Map(positionsRef.current);
-            let hasChanges = false;
 
             persons.forEach(p => {
                 if (!posMap.has(p.personId)) {
@@ -662,6 +785,7 @@ function FamilyTreeInner({
             selectedPersonId,
             highlightedSet,
             ancestryPathIds,
+            focusBranchIds,
             scriptMode || 'both',
             adaptiveSizes,
             textDensityMode,
@@ -670,6 +794,15 @@ function FamilyTreeInner({
         setNodes(rfNodes);
         setEdges(rfEdges);
 
+        if (!isInitialized || historyIndexRef.current === -1) {
+            const initialSnapshot = clonePositionMap(posMap);
+            historyStackRef.current = [initialSnapshot];
+            historyIndexRef.current = 0;
+            syncHistoryMeta(0, 1);
+        } else if (hasChanges) {
+            pushHistorySnapshot(posMap);
+        }
+
         // Fit view on first load
         if (!isInitialized || prevPersonCount.current === 0) {
             setTimeout(() => {
@@ -677,7 +810,65 @@ function FamilyTreeInner({
             }, 100);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [persons, isInitialized, selectedPersonId, highlightedSet, ancestryPathIds, scriptMode, adaptiveSizes, textDensityMode, buildNodesAndEdges]);
+    }, [persons, isInitialized, selectedPersonId, highlightedSet, ancestryPathIds, focusBranchIds, scriptMode, adaptiveSizes, textDensityMode, buildNodesAndEdges, pushHistorySnapshot, syncHistoryMeta]);
+
+    const rebuildGraphFromPositions = useCallback((posMap: Map<string, { x: number; y: number }>) => {
+        const { rfNodes, rfEdges } = buildNodesAndEdges(
+            posMap,
+            selectedPersonId,
+            highlightedSet,
+            ancestryPathIds,
+            focusBranchIds,
+            scriptMode || 'both',
+            adaptiveSizes,
+            textDensityMode,
+        );
+        setNodes(rfNodes);
+        setEdges(rfEdges);
+    }, [
+        buildNodesAndEdges,
+        selectedPersonId,
+        highlightedSet,
+        ancestryPathIds,
+        focusBranchIds,
+        scriptMode,
+        adaptiveSizes,
+        textDensityMode,
+        setNodes,
+        setEdges,
+    ]);
+
+    const applyHistorySnapshot = useCallback((snapshot: Map<string, { x: number; y: number }>) => {
+        const cloned = clonePositionMap(snapshot);
+        applyingHistoryRef.current = true;
+        positionsRef.current = cloned;
+        rebuildGraphFromPositions(cloned);
+        if (onAllPositionsChange) {
+            onAllPositionsChange(cloned);
+        }
+        setTimeout(() => {
+            applyingHistoryRef.current = false;
+        }, 0);
+    }, [onAllPositionsChange, rebuildGraphFromPositions]);
+
+    const handleUndo = useCallback(() => {
+        const currentIndex = historyIndexRef.current;
+        if (currentIndex <= 0) return;
+        const nextIndex = currentIndex - 1;
+        historyIndexRef.current = nextIndex;
+        syncHistoryMeta(nextIndex, historyStackRef.current.length);
+        applyHistorySnapshot(historyStackRef.current[nextIndex]);
+    }, [applyHistorySnapshot, syncHistoryMeta]);
+
+    const handleRedo = useCallback(() => {
+        const currentIndex = historyIndexRef.current;
+        const maxIndex = historyStackRef.current.length - 1;
+        if (currentIndex < 0 || currentIndex >= maxIndex) return;
+        const nextIndex = currentIndex + 1;
+        historyIndexRef.current = nextIndex;
+        syncHistoryMeta(nextIndex, historyStackRef.current.length);
+        applyHistorySnapshot(historyStackRef.current[nextIndex]);
+    }, [applyHistorySnapshot, syncHistoryMeta]);
 
     // Handle node position changes (drag)
     const handleNodesChange = useCallback((changes: NodeChange<Node>[]) => {
@@ -756,10 +947,11 @@ function FamilyTreeInner({
     const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
         draggingNodeIdsRef.current.delete(node.id);
         lastDraggedTimeRef.current.set(node.id, Date.now());
+        pushHistorySnapshot(positionsRef.current);
         if (onPositionChange) {
             onPositionChange(node.id, { x: node.position.x, y: node.position.y });
         }
-    }, [onPositionChange]);
+    }, [onPositionChange, pushHistorySnapshot]);
 
     const handleSelectionDragStart = useCallback((_event: React.MouseEvent, nodes: Node[]) => {
         nodes.forEach(n => draggingNodeIdsRef.current.add(n.id));
@@ -774,10 +966,12 @@ function FamilyTreeInner({
             positionsToUpdate.set(node.id, { x: node.position.x, y: node.position.y });
         });
 
+        pushHistorySnapshot(positionsRef.current);
+
         if (onAllPositionsChange && positionsToUpdate.size > 0) {
             onAllPositionsChange(positionsToUpdate);
         }
-    }, [onAllPositionsChange]);
+    }, [onAllPositionsChange, pushHistorySnapshot]);
 
     // Handle node click
     const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -785,14 +979,22 @@ function FamilyTreeInner({
         if (person) {
             onPersonClick?.(person);
             setAncestryPathIds(traceAncestryPath(person.personId));
+            if (isFocusMode) {
+                setFocusRootPersonId(person.personId);
+                setFocusBranchIds(traceBranchDescendants(person.personId));
+            }
         }
-    }, [personsMap, onPersonClick, traceAncestryPath]);
+    }, [personsMap, onPersonClick, traceAncestryPath, isFocusMode, traceBranchDescendants]);
 
     // Clear ancestry on pane click
     const handlePaneClick = useCallback(() => {
         setAncestryPathIds(new Set());
         setHoveredPerson(null);
-    }, []);
+        if (isFocusMode) {
+            setFocusRootPersonId(null);
+            setFocusBranchIds(new Set());
+        }
+    }, [isFocusMode]);
 
     // Focus on person (for search)
     const focusOnPerson = useCallback((personId: string) => {
@@ -804,11 +1006,19 @@ function FamilyTreeInner({
             duration: 500,
         });
         setHighlightedIds([personId]);
-    }, [reactFlowInstance, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
+        if (isFocusMode) {
+            setFocusRootPersonId(personId);
+            setFocusBranchIds(traceBranchDescendants(personId));
+        }
+    }, [reactFlowInstance, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight, isFocusMode, traceBranchDescendants]);
 
-    const treeAspectRatio = useMemo(() => {
-        const personNodes = nodes.filter(node => node.type === 'male' || node.type === 'female');
-        if (personNodes.length === 0) return NODE_WIDTH / NODE_HEIGHT;
+    const personNodes = useMemo(
+        () => nodes.filter(node => node.type === 'male' || node.type === 'female'),
+        [nodes]
+    );
+
+    const treeFlowBounds = useMemo<FlowRect | null>(() => {
+        if (personNodes.length === 0) return null;
 
         let minX = Infinity;
         let minY = Infinity;
@@ -822,10 +1032,26 @@ function FamilyTreeInner({
             maxY = Math.max(maxY, node.position.y + adaptiveSizes.nodeHeight);
         });
 
-        const width = Math.max(1, maxX - minX);
-        const height = Math.max(1, maxY - minY);
-        return width / height;
-    }, [nodes, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
+        const flowPadding = Math.max(24, Math.round(adaptiveSizes.nodeWidth * 0.16));
+        minX -= flowPadding;
+        minY -= flowPadding;
+        maxX += flowPadding;
+        maxY += flowPadding;
+
+        return {
+            minX,
+            minY,
+            maxX,
+            maxY,
+            width: Math.max(1, maxX - minX),
+            height: Math.max(1, maxY - minY),
+        };
+    }, [personNodes, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
+
+    const treeAspectRatio = useMemo(() => {
+        if (!treeFlowBounds) return NODE_WIDTH / NODE_HEIGHT;
+        return treeFlowBounds.width / treeFlowBounds.height;
+    }, [treeFlowBounds]);
 
     // Canvas guide follows paper ratio (A-series), independent from paper size selection.
     const guideLayout = useMemo(() => {
@@ -855,29 +1081,12 @@ function FamilyTreeInner({
         };
     }, [exportPaperSize, guideLayout]);
 
-    const guideScreenRect = useMemo(() => {
-        const personNodes = nodes.filter(node => node.type === 'male' || node.type === 'female');
-        if (personNodes.length === 0 || currentViewport.zoom <= 0) return null;
+    const liveGuideFlowRect = useMemo<FlowRect | null>(() => {
+        if (!treeFlowBounds) return null;
 
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-        personNodes.forEach(node => {
-            minX = Math.min(minX, node.position.x);
-            minY = Math.min(minY, node.position.y);
-            maxX = Math.max(maxX, node.position.x + adaptiveSizes.nodeWidth);
-            maxY = Math.max(maxY, node.position.y + adaptiveSizes.nodeHeight);
-        });
-
-        const flowPadding = Math.max(24, Math.round(adaptiveSizes.nodeWidth * 0.16));
-        minX -= flowPadding;
-        minY -= flowPadding;
-        maxX += flowPadding;
-        maxY += flowPadding;
-
-        let width = Math.max(1, maxX - minX);
-        let height = Math.max(1, maxY - minY);
+        let { minX, minY, maxX, maxY } = treeFlowBounds;
+        let width = treeFlowBounds.width;
+        let height = treeFlowBounds.height;
         const currentAspect = width / height;
         const targetAspect = guideLayout.targetAspect;
 
@@ -896,13 +1105,135 @@ function FamilyTreeInner({
         width = Math.max(1, maxX - minX);
         height = Math.max(1, maxY - minY);
 
+        return { minX, minY, maxX, maxY, width, height };
+    }, [treeFlowBounds, guideLayout.targetAspect]);
+
+    useEffect(() => {
+        if (!enforceCanvasBoundary) {
+            setLockedGuideFlowRect(null);
+            return;
+        }
+        if (!lockedGuideFlowRect && liveGuideFlowRect) {
+            setLockedGuideFlowRect(liveGuideFlowRect);
+        }
+    }, [enforceCanvasBoundary, lockedGuideFlowRect, liveGuideFlowRect]);
+
+    useEffect(() => {
+        if (enforceCanvasBoundary && liveGuideFlowRect) {
+            setLockedGuideFlowRect(liveGuideFlowRect);
+        }
+    }, [persons.length, enforceCanvasBoundary, liveGuideFlowRect]);
+
+    useEffect(() => {
+        if (isFocusMode) return;
+        setFocusRootPersonId(null);
+        setFocusBranchIds(new Set());
+    }, [isFocusMode]);
+
+    const activeGuideFlowRect = useMemo(
+        () => (enforceCanvasBoundary ? lockedGuideFlowRect ?? liveGuideFlowRect : liveGuideFlowRect),
+        [enforceCanvasBoundary, lockedGuideFlowRect, liveGuideFlowRect]
+    );
+
+    const guideScreenRect = useMemo(() => {
+        if (!activeGuideFlowRect || currentViewport.zoom <= 0) return null;
         return {
-            left: minX * currentViewport.zoom + currentViewport.x,
-            top: minY * currentViewport.zoom + currentViewport.y,
-            width: width * currentViewport.zoom,
-            height: height * currentViewport.zoom,
+            left: activeGuideFlowRect.minX * currentViewport.zoom + currentViewport.x,
+            top: activeGuideFlowRect.minY * currentViewport.zoom + currentViewport.y,
+            width: activeGuideFlowRect.width * currentViewport.zoom,
+            height: activeGuideFlowRect.height * currentViewport.zoom,
         };
-    }, [nodes, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight, currentViewport, guideLayout.targetAspect]);
+    }, [activeGuideFlowRect, currentViewport]);
+
+    const printFitMetrics = useMemo(() => {
+        if (!treeFlowBounds || !activeGuideFlowRect) return null;
+        const treeArea = treeFlowBounds.width * treeFlowBounds.height;
+        const guideArea = activeGuideFlowRect.width * activeGuideFlowRect.height;
+        const utilizationRaw = guideArea > 0 ? (treeArea / guideArea) * 100 : 0;
+        const utilization = Math.max(0, Math.min(100, utilizationRaw));
+        const whiteSpace = 100 - utilization;
+        const score =
+            utilization >= 90 ? 'Excellent' :
+                utilization >= 80 ? 'Good' :
+                    utilization >= 65 ? 'Fair' : 'Low';
+        const clippingRisk =
+            utilization < 60 ? 'Tinggi' :
+                utilization < 75 ? 'Sedang' : 'Rendah';
+
+        const treeAspect = treeFlowBounds.width / treeFlowBounds.height;
+        const targetAspect = guideLayout.targetAspect;
+        const previewTreeWidthPct = treeAspect > targetAspect ? 100 : (treeAspect / targetAspect) * 100;
+        const previewTreeHeightPct = treeAspect > targetAspect ? (targetAspect / treeAspect) * 100 : 100;
+
+        return {
+            utilization,
+            whiteSpace,
+            score,
+            clippingRisk,
+            previewTreeWidthPct: Math.max(4, Math.min(100, previewTreeWidthPct)),
+            previewTreeHeightPct: Math.max(4, Math.min(100, previewTreeHeightPct)),
+        };
+    }, [treeFlowBounds, activeGuideFlowRect, guideLayout.targetAspect]);
+
+    const refreshBoundaryFromCurrentGuide = useCallback(() => {
+        if (liveGuideFlowRect) {
+            setLockedGuideFlowRect(liveGuideFlowRect);
+            toast.success('Batas kanvas disesuaikan ulang dari node saat ini');
+        }
+    }, [liveGuideFlowRect]);
+
+    const saveCurrentView = useCallback(() => {
+        const viewport = reactFlowInstance.getViewport();
+        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const view: SavedView = {
+            id,
+            name: `View ${savedViews.length + 1}`,
+            viewport,
+            createdAt: new Date().toISOString(),
+        };
+
+        setSavedViews(prev => {
+            const next = [...prev, view];
+            return next.slice(-8);
+        });
+        setSelectedSavedViewId(id);
+        toast.success('View tersimpan');
+    }, [reactFlowInstance, savedViews.length]);
+
+    const loadSavedView = useCallback((viewId: string) => {
+        if (!viewId) return;
+        const selected = savedViews.find(v => v.id === viewId);
+        if (!selected) return;
+        reactFlowInstance.setViewport(selected.viewport, { duration: 380 });
+        setSelectedSavedViewId(viewId);
+        toast.success(`View "${selected.name}" dimuat`);
+    }, [savedViews, reactFlowInstance]);
+
+    const deleteSavedView = useCallback((viewId: string) => {
+        if (!viewId) return;
+        setSavedViews(prev => prev.filter(v => v.id !== viewId));
+        setSelectedSavedViewId(prev => (prev === viewId ? '' : prev));
+    }, []);
+
+    const nodeExtent = useMemo<[[number, number], [number, number]] | undefined>(() => {
+        if (!enforceCanvasBoundary || !activeGuideFlowRect) return undefined;
+        const minX = activeGuideFlowRect.minX + 8;
+        const minY = activeGuideFlowRect.minY + 8;
+        const maxX = activeGuideFlowRect.maxX - adaptiveSizes.nodeWidth - 8;
+        const maxY = activeGuideFlowRect.maxY - adaptiveSizes.nodeHeight - 8;
+
+        if (maxX <= minX || maxY <= minY) return undefined;
+        return [[minX, minY], [maxX, maxY]];
+    }, [enforceCanvasBoundary, activeGuideFlowRect, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight]);
+
+    const translateExtent = useMemo<[[number, number], [number, number]] | undefined>(() => {
+        if (!enforceCanvasBoundary || !activeGuideFlowRect) return undefined;
+        const panPadding = Math.max(80, Math.round(adaptiveSizes.nodeWidth * 0.7));
+        return [
+            [activeGuideFlowRect.minX - panPadding, activeGuideFlowRect.minY - panPadding],
+            [activeGuideFlowRect.maxX + panPadding, activeGuideFlowRect.maxY + panPadding],
+        ];
+    }, [enforceCanvasBoundary, activeGuideFlowRect, adaptiveSizes.nodeWidth]);
 
     const getTreeBounds = useCallback(() => {
         const posMap = positionsRef.current;
@@ -939,6 +1270,7 @@ function FamilyTreeInner({
     const handleExportPDF = useCallback(async () => {
         if (isExporting || persons.length === 0) return;
         setIsExporting(true);
+        setShowPrintPreview(false);
         toast('📸 Mempersiapkan PDF print-quality...', { duration: 4000 });
 
         try {
@@ -1206,7 +1538,35 @@ function FamilyTreeInner({
         setCurrentViewport(reactFlowInstance.getViewport());
     }, [reactFlowInstance, nodes.length]);
 
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+
+            const withCmdOrCtrl = event.metaKey || event.ctrlKey;
+            if (!withCmdOrCtrl) return;
+
+            const key = event.key.toLowerCase();
+            if (key === 'z' && !event.shiftKey) {
+                event.preventDefault();
+                handleUndo();
+                return;
+            }
+            if (key === 'y' || (key === 'z' && event.shiftKey)) {
+                event.preventDefault();
+                handleRedo();
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [handleUndo, handleRedo]);
+
     const [isLegendOpen, setIsLegendOpen] = useState(true);
+    const canUndo = historyMeta.index > 0;
+    const canRedo = historyMeta.index >= 0 && historyMeta.index < historyMeta.total - 1;
 
     if (persons.length === 0) {
         return (
@@ -1264,6 +1624,14 @@ function FamilyTreeInner({
                         </button>
                         <button
                             type="button"
+                            onClick={() => setShowPrintPreview(true)}
+                            className="px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border border-blue-200 bg-white text-blue-700 hover:bg-blue-50 cursor-pointer select-none transition-colors"
+                            title="Lihat preview print dan fit score"
+                        >
+                            Preview
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => setShowPaperGuide(prev => !prev)}
                             className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${showPaperGuide
                                 ? 'bg-teal-50 text-teal-700 border-teal-200'
@@ -1273,6 +1641,114 @@ function FamilyTreeInner({
                         >
                             {showPaperGuide ? 'Guide On' : 'Guide Off'}
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setEnforceCanvasBoundary(prev => !prev)}
+                            className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${enforceCanvasBoundary
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                                }`}
+                            title="Kunci batas kanvas mengikuti rasio agar drag node tetap fit ke halaman"
+                        >
+                            {enforceCanvasBoundary ? 'Boundary On' : 'Boundary Off'}
+                        </button>
+                        {enforceCanvasBoundary && (
+                            <button
+                                type="button"
+                                onClick={refreshBoundaryFromCurrentGuide}
+                                className="px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 cursor-pointer select-none transition-colors"
+                                title="Hitung ulang batas kanvas dari posisi node saat ini"
+                            >
+                                Refit
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={handleUndo}
+                            disabled={!canUndo}
+                            className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${canUndo
+                                ? 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                                : 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                                }`}
+                            title="Undo (Ctrl/Cmd + Z)"
+                        >
+                            Undo
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleRedo}
+                            disabled={!canRedo}
+                            className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${canRedo
+                                ? 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                                : 'bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed'
+                                }`}
+                            title="Redo (Ctrl/Cmd + Y)"
+                        >
+                            Redo
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsFocusMode(prev => !prev)}
+                            className={`px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border cursor-pointer select-none transition-colors ${isFocusMode
+                                ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                                }`}
+                            title="Mode fokus cabang (klik node untuk fokus keturunan)"
+                        >
+                            {isFocusMode ? 'Focus On' : 'Focus Off'}
+                        </button>
+                        {isFocusMode && focusRootPersonId && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFocusRootPersonId(null);
+                                    setFocusBranchIds(new Set());
+                                }}
+                                className="px-2.5 md:px-3 h-8 md:h-9 flex items-center justify-center rounded text-xs md:text-sm font-medium border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 cursor-pointer select-none transition-colors"
+                                title="Reset fokus cabang"
+                            >
+                                Clear Focus
+                            </button>
+                        )}
+                        <div className="flex h-8 md:h-9 rounded border border-stone-200 overflow-hidden bg-white">
+                            <button
+                                type="button"
+                                onClick={saveCurrentView}
+                                className="px-2.5 md:px-3 text-xs md:text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
+                                title="Simpan posisi pan/zoom saat ini"
+                            >
+                                Save View
+                            </button>
+                            <select
+                                value={selectedSavedViewId}
+                                onChange={(e) => {
+                                    const id = e.target.value;
+                                    setSelectedSavedViewId(id);
+                                    if (id) loadSavedView(id);
+                                }}
+                                className="px-2 py-0 text-xs md:text-sm border-l border-stone-200 text-stone-700 bg-white focus:outline-none"
+                                title="Muat saved view"
+                            >
+                                <option value="">Views</option>
+                                {savedViews.map(view => (
+                                    <option key={view.id} value={view.id}>
+                                        {view.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={() => deleteSavedView(selectedSavedViewId)}
+                                disabled={!selectedSavedViewId}
+                                className={`px-2.5 md:px-3 text-xs md:text-sm font-medium border-l border-stone-200 transition-colors ${selectedSavedViewId
+                                    ? 'text-rose-700 hover:bg-rose-50'
+                                    : 'text-stone-400 cursor-not-allowed'
+                                    }`}
+                                title="Hapus saved view yang dipilih"
+                            >
+                                Del
+                            </button>
+                        </div>
                         <div className="flex h-8 md:h-9 rounded border border-stone-200 overflow-hidden bg-white">
                             <button
                                 type="button"
@@ -1298,6 +1774,11 @@ function FamilyTreeInner({
                             </button>
                         </div>
                     </div>
+                    {printFitMetrics && (
+                        <div className="flex h-8 md:h-9 items-center px-2.5 md:px-3 rounded border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs md:text-sm font-medium shrink-0">
+                            Fit {printFitMetrics.utilization.toFixed(0)}%
+                        </div>
+                    )}
                 </div>
 
                 {/* Search - Mobile: Order 1, Desktop: Order 2 */}
@@ -1358,7 +1839,10 @@ function FamilyTreeInner({
                 {showPaperGuide && (
                     <div className="pointer-events-none absolute inset-0 z-[2] print:hidden">
                         <div
-                            className="absolute rounded-2xl border-2 border-dashed border-teal-400/70 bg-teal-100/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.35)]"
+                            className={`absolute rounded-2xl border-2 border-dashed ${enforceCanvasBoundary
+                                ? 'border-amber-400/80 bg-amber-100/10 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.4)]'
+                                : 'border-teal-400/70 bg-teal-100/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.35)]'
+                                }`}
                             style={{
                                 left: guideScreenRect?.left ?? 0,
                                 top: guideScreenRect?.top ?? 0,
@@ -1396,6 +1880,8 @@ function FamilyTreeInner({
                     fitViewOptions={{ padding: 0.15 }}
                     minZoom={0.05}
                     maxZoom={3}
+                    nodeExtent={nodeExtent}
+                    translateExtent={translateExtent}
                     attributionPosition="bottom-right"
                     defaultEdgeOptions={{
                         type: DEFAULT_EDGE_SETTINGS.edgeType,
@@ -1456,6 +1942,89 @@ function FamilyTreeInner({
                     </div>
                 );
             })()}
+            {showPrintPreview && printFitMetrics && (
+                <div
+                    className="fixed inset-0 z-[120] bg-black/45 backdrop-blur-[1px] flex items-center justify-center p-4 print:hidden"
+                    onClick={() => setShowPrintPreview(false)}
+                >
+                    <div
+                        className="w-[min(620px,94vw)] bg-white rounded-2xl border border-stone-200 shadow-2xl p-4 md:p-5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-base md:text-lg font-semibold text-stone-800">Preview Print</h3>
+                                <p className="text-xs md:text-sm text-stone-500">
+                                    {exportPaperSize} {paperLayout.isLandscape ? 'Landscape' : 'Portrait'} · Score {printFitMetrics.score}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowPrintPreview(false)}
+                                className="h-8 px-2.5 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-sm"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-3 gap-2 text-xs md:text-sm">
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
+                                <div className="text-stone-500">Fit</div>
+                                <div className="font-semibold text-emerald-700">{printFitMetrics.utilization.toFixed(0)}%</div>
+                            </div>
+                            <div className="rounded-lg border border-sky-200 bg-sky-50 p-2">
+                                <div className="text-stone-500">Ruang Kosong</div>
+                                <div className="font-semibold text-sky-700">{printFitMetrics.whiteSpace.toFixed(0)}%</div>
+                            </div>
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2">
+                                <div className="text-stone-500">Risiko Terpotong</div>
+                                <div className="font-semibold text-amber-700">{printFitMetrics.clippingRisk}</div>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                            <div
+                                className="relative mx-auto bg-white border border-stone-300 rounded-lg overflow-hidden"
+                                style={{
+                                    aspectRatio: `${paperLayout.pageW} / ${paperLayout.pageH}`,
+                                    width: 'min(100%, 360px)',
+                                }}
+                            >
+                                <div className="absolute inset-[8%] border border-stone-200 bg-stone-50">
+                                    <div
+                                        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 border border-teal-400 bg-teal-200/60 rounded"
+                                        style={{
+                                            width: `${printFitMetrics.previewTreeWidthPct}%`,
+                                            height: `${printFitMetrics.previewTreeHeightPct}%`,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-2 text-[11px] md:text-xs text-stone-500 text-center">
+                                Area teal adalah estimasi area tree yang terpakai di halaman.
+                            </p>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowPrintPreview(false)}
+                                className="h-9 px-3 rounded border border-stone-200 text-stone-600 hover:bg-stone-50 text-sm"
+                            >
+                                Kembali
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleExportPDF}
+                                disabled={isExporting}
+                                className="h-9 px-3 rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 text-sm disabled:opacity-60 disabled:cursor-wait"
+                            >
+                                {isExporting ? 'Memproses...' : 'Export PDF'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Hidden Legend for Capture */}
             <div ref={legendRef} className="bg-white p-4 rounded-lg border border-stone-800 shadow-sm inline-block" style={{ position: 'absolute', top: -9999, left: -9999, width: 'fit-content' }}>
                 <div className="font-bold text-stone-800 mb-2 border-b border-stone-200 pb-1 text-sm">Legenda / Keterangan</div>

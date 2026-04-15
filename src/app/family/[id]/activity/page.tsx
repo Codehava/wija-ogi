@@ -8,7 +8,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
 import { Activity, ActivityAction } from '@/types';
 
 const ACTION_LABELS: Record<ActivityAction, { icon: string; label: string; color: string }> = {
@@ -48,7 +47,6 @@ function formatRelativeTime(dateStr: string | Date): string {
 export default function ActivityPage() {
     const params = useParams();
     const familyId = params.id as string;
-    const { user } = useAuth();
 
     const [activities, setActivities] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);

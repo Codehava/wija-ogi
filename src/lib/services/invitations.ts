@@ -188,7 +188,7 @@ export async function isEmailAlreadyInvited(familyId: string, email: string): Pr
     return !!row;
 }
 
-export default {
+const invitationService = {
     createInvitation,
     getInvitation,
     getPendingInvitationsForEmail,
@@ -199,3 +199,5 @@ export default {
     resendInvitation,
     isEmailAlreadyInvited,
 };
+
+export default invitationService;

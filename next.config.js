@@ -1,14 +1,15 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: 'standalone',
+    outputFileTracingRoot: path.resolve(__dirname),
     reactStrictMode: true,
-    // Skip type check & lint in Docker build (verified locally before push)
+    // Enforce type/lint checks during build for safer deploys.
     experimental: {
         workerThreads: false,
         cpus: 1
     },
-    typescript: { ignoreBuildErrors: true },
-    eslint: { ignoreDuringBuilds: true },
     images: {
         remotePatterns: [
             {

@@ -5,10 +5,9 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import Image from 'next/image';
 import { clsx } from 'clsx';
 import { Person, ScriptMode } from '@/types';
-import { transliterateLatin } from '@/lib/transliteration/engine';
 import { getGenerationLabel } from '@/lib/generation/calculator';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { DualScriptDisplay } from '@/components/aksara/DualScriptDisplay';
@@ -32,15 +31,6 @@ export function PersonCard({
     onAddRelationship,
     showActions = true
 }: PersonCardProps) {
-    const fullLontaraName = useMemo(() => {
-        if (person.lontaraName) {
-            return [person.lontaraName.first, person.lontaraName.middle, person.lontaraName.last]
-                .filter(Boolean)
-                .join(' ');
-        }
-        return transliterateLatin(person.fullName).lontara;
-    }, [person.fullName, person.lontaraName]);
-
     const generationText = generation > 0 ? getGenerationLabel(generation) : null;
 
     const genderIcon = person.gender === 'male' ? '♂️' : person.gender === 'female' ? '♀️' : '👤';
@@ -55,10 +45,13 @@ export function PersonCard({
                         'w-16 h-16 rounded-full flex items-center justify-center text-3xl bg-white/20'
                     )}>
                         {person.photoUrl ? (
-                            <img
+                            <Image
                                 src={person.photoUrl}
                                 alt={person.fullName}
+                                width={64}
+                                height={64}
                                 className="w-full h-full rounded-full object-cover"
+                                unoptimized
                             />
                         ) : (
                             genderIcon

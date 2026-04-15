@@ -3,7 +3,7 @@
 // React hooks for authentication and authorization
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { MemberRole } from '@/types';
 import { familiesApi } from '@/lib/api';
@@ -84,12 +84,40 @@ export function useIsOwner(familyId: string | null) {
 
 /**
  * Hook to check if user is a super admin
- * TODO: Implement when global user role system is added to PostgreSQL schema
  */
 export function useIsSuperAdmin() {
-    // /api/users/me/role endpoint does not exist yet (was a Firebase feature)
-    // Return false to avoid 404 errors on every page load
-    return { isSuperAdmin: false, loading: false };
+    const { user } = useAuth();
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchSuperAdminRole() {
+            if (!user) {
+                setIsSuperAdmin(false);
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/superadmin');
+                if (!response.ok) {
+                    setIsSuperAdmin(false);
+                    return;
+                }
+                const data = await response.json();
+                setIsSuperAdmin(Boolean(data.isSuperAdmin));
+            } catch {
+                setIsSuperAdmin(false);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        setLoading(true);
+        void fetchSuperAdminRole();
+    }, [user]);
+
+    return { isSuperAdmin, loading };
 }
 
 /**

@@ -5,7 +5,7 @@
 
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { trees, treeMembers, persons } from '@/db/schema';
+import { trees, treeMembers } from '@/db/schema';
 import type { Family, CreateFamilyInput, FamilyMember, MemberRole } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────────
@@ -248,10 +248,15 @@ export async function updateMemberRole(
     userId: string,
     newRole: MemberRole
 ): Promise<void> {
-    await db
+    const updated = await db
         .update(treeMembers)
         .set({ role: newRole })
-        .where(and(eq(treeMembers.treeId, familyId), eq(treeMembers.userId, userId)));
+        .where(and(eq(treeMembers.treeId, familyId), eq(treeMembers.userId, userId)))
+        .returning({ id: treeMembers.id });
+
+    if (updated.length === 0) {
+        throw new Error('Member not found');
+    }
 }
 
 /**
@@ -261,9 +266,14 @@ export async function removeFamilyMember(
     familyId: string,
     userId: string
 ): Promise<void> {
-    await db
+    const deleted = await db
         .delete(treeMembers)
-        .where(and(eq(treeMembers.treeId, familyId), eq(treeMembers.userId, userId)));
+        .where(and(eq(treeMembers.treeId, familyId), eq(treeMembers.userId, userId)))
+        .returning({ id: treeMembers.id });
+
+    if (deleted.length === 0) {
+        throw new Error('Member not found');
+    }
 
     await db
         .update(trees)

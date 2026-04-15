@@ -27,7 +27,7 @@ export default function SettingsPage() {
     const { user } = useAuth();
     const { hasRole: isOwner, loading: ownerLoading } = useIsOwner(familyId);
     const { hasRole: isAdmin } = useIsAdmin(familyId);
-    const { family, loading, error } = useFamilyTree(familyId);
+    const { family, loading } = useFamilyTree(familyId);
 
     // Form state
     const [displayName, setDisplayName] = useState('');

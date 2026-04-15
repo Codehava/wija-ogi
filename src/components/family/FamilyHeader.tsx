@@ -5,6 +5,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Family, ScriptMode } from '@/types';
 import { transliterateLatin } from '@/lib/transliteration/engine';
 
@@ -47,7 +48,13 @@ export function FamilyHeader({
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/" className="flex items-center gap-3 text-teal-200 hover:text-white transition">
-                            <img src="/logo.png" alt="WIJA-Ogi" className="w-10 h-10 rounded-lg bg-white/10 p-1" />
+                            <Image
+                                src="/logo.png"
+                                alt="WIJA-Ogi"
+                                width={40}
+                                height={40}
+                                className="w-10 h-10 rounded-lg bg-white/10 p-1"
+                            />
                             <span>← Kembali</span>
                         </Link>
                         <div className="h-8 w-px bg-teal-500"></div>

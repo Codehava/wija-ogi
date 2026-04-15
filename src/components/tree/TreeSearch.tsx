@@ -183,7 +183,7 @@ export function TreeSearch({
             {/* No results */}
             {isOpen && query && results.length === 0 && (
                 <div className="absolute z-50 w-full mt-1 py-3 px-4 bg-white rounded-lg border border-stone-200 shadow-lg text-center text-stone-500 text-sm">
-                    Tidak ditemukan "{query}"
+                    Tidak ditemukan &ldquo;{query}&rdquo;
                 </div>
             )}
         </div>

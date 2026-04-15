@@ -33,7 +33,7 @@ export function PhilosophySection() {
                                 {resoTrans}
                             </p>
                             <p className="text-lg font-serif italic text-stone-700 mb-2">
-                                "{reso}"
+                                &ldquo;{reso}&rdquo;
                             </p>
                             <p className="text-sm text-stone-500">
                                 Hanya kerja keras yang tak kenal lelah yang akan mendapatkan rahmat Dewata.

@@ -8,6 +8,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useFamilyTree, useInvalidate } from '@/hooks/useFirestore';
 import { useCanEdit } from '@/hooks/useAuth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,8 +21,7 @@ import { DualScriptDisplay } from '@/components/aksara/DualScriptDisplay';
 import { Card, CardHeader, CardBody } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/Modal';
-import { transliterateLatin } from '@/lib/transliteration/engine';
-import { getGenerationLabel, calculateGeneration } from '@/lib/generation/calculator';
+import { getGenerationLabel } from '@/lib/generation/calculator';
 
 export default function PersonDetailPage() {
     const params = useParams();
@@ -31,14 +31,14 @@ export default function PersonDetailPage() {
 
     const { user } = useAuth();
     const { hasRole: canEdit } = useCanEdit(familyId);
-    const { family, persons, relationships, personsMap, personGenerations, loading } = useFamilyTree(familyId);
+    const { family, relationships, personsMap, personGenerations, loading } = useFamilyTree(familyId);
     const { invalidatePersons } = useInvalidate();
 
     // UI State
     const [showEditForm, setShowEditForm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [formLoading, setFormLoading] = useState(false);
-    const [scriptMode, setScriptMode] = useState<ScriptMode>('both');
+    const [scriptMode] = useState<ScriptMode>('both');
     const [photoUploading, setPhotoUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -222,7 +222,14 @@ export default function PersonDetailPage() {
                                     {photoUploading ? (
                                         <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
                                     ) : person.photoUrl ? (
-                                        <img src={person.photoUrl} alt={person.fullName} className="w-full h-full object-cover" />
+                                        <Image
+                                            src={person.photoUrl}
+                                            alt={person.fullName}
+                                            width={96}
+                                            height={96}
+                                            className="w-full h-full object-cover"
+                                            unoptimized
+                                        />
                                     ) : (
                                         genderIcon
                                     )}

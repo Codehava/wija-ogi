@@ -27,6 +27,8 @@ interface FemaleNodeData {
     isHighlighted: boolean;
     isOnAncestryPath: boolean;
     hasAncestryActive: boolean;
+    isInFocusBranch?: boolean;
+    hasFocusBranchActive?: boolean;
     onPersonClick?: () => void;
     onHover?: (rect: DOMRect) => void;
     onHoverEnd?: () => void;
@@ -47,6 +49,8 @@ function FemaleNodeComponent({ data }: NodeProps) {
     const hasTitle = !!d.person.title || !!d.person.reignTitle;
     const isLongLatinName = d.displayName.length > 28;
     const effectiveScale = fontScale * densityScale;
+    const isOutOfFocus = !!d.hasFocusBranchActive && !d.isInFocusBranch;
+    const isOutOfAncestry = d.hasAncestryActive && !d.isOnAncestryPath;
     const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, mode === 'compact' ? 9.5 : 12, mode === 'compact' ? 15 : 19);
     const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, mode === 'compact' ? 9 : 11, mode === 'compact' ? 14 : 18);
     const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, mode === 'compact' ? 7.5 : 8.5, mode === 'compact' ? 10 : 12);
@@ -56,8 +60,12 @@ function FemaleNodeComponent({ data }: NodeProps) {
             className={`flex flex-col items-center gap-1 ${d.isSelected ? 'scale-110' : ''
                 } ${d.isHighlighted ? 'animate-pulse' : ''}`}
             style={{
-                opacity: d.hasAncestryActive && !d.isOnAncestryPath ? 0.3 : 1,
-                filter: d.isOnAncestryPath ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))' : undefined,
+                opacity: isOutOfFocus ? 0.16 : isOutOfAncestry ? 0.3 : 1,
+                filter: d.isOnAncestryPath
+                    ? 'drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))'
+                    : isOutOfFocus
+                        ? 'grayscale(0.55)'
+                        : undefined,
             }}
             onMouseEnter={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();

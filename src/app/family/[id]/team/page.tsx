@@ -5,9 +5,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useFamilyTree } from '@/hooks/useFirestore';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,14 +35,7 @@ export default function TeamPage() {
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
 
-    // Load members and invitations
-    useEffect(() => {
-        if (familyId && isAdmin) {
-            loadData();
-        }
-    }, [familyId, isAdmin]);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const [membersData, invitationsData] = await Promise.all([
                 familiesApi.getFamilyMembers(familyId),
@@ -52,14 +46,21 @@ export default function TeamPage() {
         } catch (err) {
             console.error('Failed to load team data:', err);
         }
-    };
+    }, [familyId]);
 
-    const handleRoleChange = async (memberId: string, newRole: MemberRole) => {
+    // Load members and invitations
+    useEffect(() => {
+        if (familyId && isAdmin) {
+            void loadData();
+        }
+    }, [familyId, isAdmin, loadData]);
+
+    const handleRoleChange = async (userId: string, newRole: MemberRole) => {
         setActionLoading(true);
         try {
-            await familiesApi.updateMemberRole(familyId, memberId, newRole);
+            await familiesApi.updateMemberRole(familyId, userId, newRole);
             setMembers(prev => prev.map(m =>
-                m.memberId === memberId ? { ...m, role: newRole } : m
+                m.userId === userId ? { ...m, role: newRole } : m
             ));
         } catch (err) {
             console.error('Failed to update role:', err);
@@ -73,8 +74,8 @@ export default function TeamPage() {
 
         setActionLoading(true);
         try {
-            await familiesApi.removeFamilyMember(familyId, selectedMember.memberId);
-            setMembers(prev => prev.filter(m => m.memberId !== selectedMember.memberId));
+            await familiesApi.removeFamilyMember(familyId, selectedMember.userId);
+            setMembers(prev => prev.filter(m => m.userId !== selectedMember.userId));
             setShowRemoveModal(false);
             setSelectedMember(null);
         } catch (err) {
@@ -100,7 +101,7 @@ export default function TeamPage() {
         setActionLoading(true);
         try {
             await invitationsApi.resendInvitation(invitationId);
-            loadData(); // Reload to get updated expiry
+            await loadData(); // Reload to get updated expiry
         } catch (err) {
             console.error('Failed to resend invitation:', err);
         } finally {
@@ -182,7 +183,14 @@ export default function TeamPage() {
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-bold">
                                             {member.photoUrl ? (
-                                                <img src={member.photoUrl} alt={member.displayName} className="w-full h-full rounded-full object-cover" />
+                                                <Image
+                                                    src={member.photoUrl}
+                                                    alt={member.displayName}
+                                                    width={40}
+                                                    height={40}
+                                                    className="w-full h-full rounded-full object-cover"
+                                                    unoptimized
+                                                />
                                             ) : (
                                                 member.displayName.charAt(0).toUpperCase()
                                             )}
@@ -205,7 +213,7 @@ export default function TeamPage() {
                                             <>
                                                 <Select
                                                     value={member.role}
-                                                    onChange={(e) => handleRoleChange(member.memberId, e.target.value as MemberRole)}
+                                                    onChange={(e) => handleRoleChange(member.userId, e.target.value as MemberRole)}
                                                     options={[
                                                         { value: 'admin', label: 'Admin' },
                                                         { value: 'editor', label: 'Editor' },

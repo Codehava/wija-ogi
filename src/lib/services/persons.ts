@@ -5,9 +5,14 @@
 
 import { eq, and, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { persons, trees } from '@/db/schema';
+import { persons, trees, relationships } from '@/db/schema';
 import type { Person, CreatePersonInput, LatinName, LontaraName } from '@/types';
 import { transliterateName } from '@/lib/transliteration/engine';
+
+function ensureStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is string => typeof item === 'string');
+}
 
 // ─────────────────────────────────────────────────────────────────────────────────
 // HELPER: Map DB row → Person type
@@ -50,10 +55,10 @@ function dbToPerson(row: typeof persons.$inferSelect): Person {
         reignTitle: row.reignTitle ?? undefined,
         biography: row.biography ?? undefined,
         relationships: {
-            spouseIds: (row.spouseIds as string[]) ?? [],
-            parentIds: (row.parentIds as string[]) ?? [],
-            childIds: (row.childIds as string[]) ?? [],
-            siblingIds: (row.siblingIds as string[]) ?? [],
+            spouseIds: ensureStringArray(row.spouseIds),
+            parentIds: ensureStringArray(row.parentIds),
+            childIds: ensureStringArray(row.childIds),
+            siblingIds: ensureStringArray(row.siblingIds),
         },
         isRootAncestor: row.isRootAncestor ?? false,
         position: {
@@ -448,6 +453,21 @@ export async function deletePerson(
     if (!person) return;
 
     await db.transaction(async (tx) => {
+        const [{ relationshipCount }] = await tx
+            .select({
+                relationshipCount: sql<number>`count(*)`.mapWith(Number),
+            })
+            .from(relationships)
+            .where(
+                and(
+                    eq(relationships.treeId, familyId),
+                    or(
+                        eq(relationships.person1Id, personId),
+                        eq(relationships.person2Id, personId)
+                    )
+                )
+            );
+
         // Relationship arrays are JSONB, so cleanup must use JS filtering (not SQL array_remove).
         const relatedRows = await tx
             .select({
@@ -461,10 +481,10 @@ export async function deletePerson(
             .where(and(eq(persons.treeId, familyId), sql`${persons.id} <> ${personId}`));
 
         for (const row of relatedRows) {
-            const spouseIds = ((row.spouseIds as string[] | null) ?? []);
-            const parentIds = ((row.parentIds as string[] | null) ?? []);
-            const childIds = ((row.childIds as string[] | null) ?? []);
-            const siblingIds = ((row.siblingIds as string[] | null) ?? []);
+            const spouseIds = ensureStringArray(row.spouseIds);
+            const parentIds = ensureStringArray(row.parentIds);
+            const childIds = ensureStringArray(row.childIds);
+            const siblingIds = ensureStringArray(row.siblingIds);
 
             const nextSpouseIds = spouseIds.filter(id => id !== personId);
             const nextParentIds = parentIds.filter(id => id !== personId);
@@ -510,6 +530,7 @@ export async function deletePerson(
             .update(trees)
             .set({
                 personCount: sql`GREATEST(${trees.personCount} - 1, 0)`,
+                relationshipCount: sql`GREATEST(${trees.relationshipCount} - ${relationshipCount}, 0)`,
                 updatedAt: new Date(),
             })
             .where(eq(trees.id, familyId));
@@ -588,6 +609,36 @@ export async function removeSpouse(
     const person2 = await getPerson(familyId, person2Id);
 
     await db.transaction(async (tx) => {
+        const deletedRelationships = await tx
+            .delete(relationships)
+            .where(
+                and(
+                    eq(relationships.treeId, familyId),
+                    eq(relationships.type, 'spouse'),
+                    or(
+                        and(
+                            eq(relationships.person1Id, person1Id),
+                            eq(relationships.person2Id, person2Id)
+                        ),
+                        and(
+                            eq(relationships.person1Id, person2Id),
+                            eq(relationships.person2Id, person1Id)
+                        )
+                    )
+                )
+            )
+            .returning({ id: relationships.id });
+
+        if (deletedRelationships.length > 0) {
+            await tx
+                .update(trees)
+                .set({
+                    relationshipCount: sql`GREATEST(${trees.relationshipCount} - ${deletedRelationships.length}, 0)`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(trees.id, familyId));
+        }
+
         if (person1) {
             await tx
                 .update(persons)
@@ -615,6 +666,36 @@ export async function removeParentChild(
     const child = await getPerson(familyId, childId);
 
     await db.transaction(async (tx) => {
+        const deletedRelationships = await tx
+            .delete(relationships)
+            .where(
+                and(
+                    eq(relationships.treeId, familyId),
+                    eq(relationships.type, 'parent-child'),
+                    or(
+                        and(
+                            eq(relationships.person1Id, parentId),
+                            eq(relationships.person2Id, childId)
+                        ),
+                        and(
+                            eq(relationships.person1Id, childId),
+                            eq(relationships.person2Id, parentId)
+                        )
+                    )
+                )
+            )
+            .returning({ id: relationships.id });
+
+        if (deletedRelationships.length > 0) {
+            await tx
+                .update(trees)
+                .set({
+                    relationshipCount: sql`GREATEST(${trees.relationshipCount} - ${deletedRelationships.length}, 0)`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(trees.id, familyId));
+        }
+
         if (parent) {
             await tx
                 .update(persons)

@@ -10,8 +10,6 @@ import {
     text,
     timestamp,
     boolean,
-    date,
-    char,
     integer,
     real,
     jsonb,

@@ -7,7 +7,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvalidate } from '@/hooks/useFirestore';
-import { Person, CreatePersonInput, Gender } from '@/types';
+import { Person, CreatePersonInput } from '@/types';
 import { personsApi, relationshipsApi } from '@/lib/api';
 import { RelationshipContext } from '@/components/person/PersonForm';
 import toast from 'react-hot-toast';
@@ -96,7 +96,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         } finally {
             setRegenerating(false);
         }
-    }, [familyId, isSuperAdmin]);
+    }, [familyId, invalidatePersons, isSuperAdmin]);
 
     const handleEditPerson = useCallback((person: Person) => {
         setEditingPerson(person);
@@ -189,7 +189,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         } finally {
             setFormLoading(false);
         }
-    }, [familyId, user, editingPerson, selectedPerson, addMemberContext, persons]);
+    }, [familyId, user, editingPerson, selectedPerson, addMemberContext, persons, invalidatePersons, invalidateRelationships]);
 
     const handleAddRelationship = useCallback(async () => {
         if (!user || !selectedPerson || !targetPersonId) return;
@@ -228,7 +228,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         } finally {
             setFormLoading(false);
         }
-    }, [familyId, user, selectedPerson, targetPersonId, relationType, marriageOrder]);
+    }, [familyId, user, selectedPerson, targetPersonId, relationType, marriageOrder, invalidatePersons, invalidateRelationships]);
 
     const getAvailablePersons = useCallback(() => {
         if (!selectedPerson) return [];
@@ -257,7 +257,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         } finally {
             setFormLoading(false);
         }
-    }, [familyId, selectedPerson, user]);
+    }, [familyId, selectedPerson, user, invalidatePersons, invalidateRelationships]);
 
     const handleRemoveRelationship = useCallback(async (
         type: 'spouse' | 'parent' | 'child',
@@ -284,7 +284,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         } finally {
             setFormLoading(false);
         }
-    }, [familyId, selectedPerson, user, persons]);
+    }, [familyId, selectedPerson, user, persons, invalidatePersons, invalidateRelationships]);
 
     const handlePositionChange = useCallback(async (personId: string, position: { x: number; y: number }) => {
         try {
@@ -319,7 +319,7 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
                 sidebarPhotoInputRef.current.value = '';
             }
         }
-    }, [familyId, user, selectedPerson]);
+    }, [familyId, user, selectedPerson, invalidatePersons]);
 
     const handleSidebarPhotoDelete = useCallback(async () => {
         if (!user || !selectedPerson?.photoUrl) return;
