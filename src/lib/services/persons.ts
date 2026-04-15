@@ -438,8 +438,7 @@ export async function setAsRootAncestor(
 // ─────────────────────────────────────────────────────────────────────────────────
 
 /**
- * P6 FIX: Delete a person and clean up relationships using targeted SQL
- * Uses array_remove instead of fetching all rows and filtering in JS
+ * Delete a person and clean up denormalized relationship JSON arrays.
  */
 export async function deletePerson(
     familyId: string,
@@ -449,22 +448,59 @@ export async function deletePerson(
     if (!person) return;
 
     await db.transaction(async (tx) => {
-        // P6 FIX: Use SQL array_remove to clean up denormalized arrays in a single query
-        // instead of fetching all rows and filtering in JS
-        await tx.execute(sql`
-            UPDATE persons SET
-                spouse_ids = array_remove(spouse_ids, ${personId}),
-                parent_ids = array_remove(parent_ids, ${personId}),
-                child_ids = array_remove(child_ids, ${personId}),
-                sibling_ids = array_remove(sibling_ids, ${personId})
-            WHERE tree_id = ${familyId}
-                AND (
-                    ${personId} = ANY(spouse_ids) OR
-                    ${personId} = ANY(parent_ids) OR
-                    ${personId} = ANY(child_ids) OR
-                    ${personId} = ANY(sibling_ids)
-                )
-        `);
+        // Relationship arrays are JSONB, so cleanup must use JS filtering (not SQL array_remove).
+        const relatedRows = await tx
+            .select({
+                id: persons.id,
+                spouseIds: persons.spouseIds,
+                parentIds: persons.parentIds,
+                childIds: persons.childIds,
+                siblingIds: persons.siblingIds,
+            })
+            .from(persons)
+            .where(and(eq(persons.treeId, familyId), sql`${persons.id} <> ${personId}`));
+
+        for (const row of relatedRows) {
+            const spouseIds = ((row.spouseIds as string[] | null) ?? []);
+            const parentIds = ((row.parentIds as string[] | null) ?? []);
+            const childIds = ((row.childIds as string[] | null) ?? []);
+            const siblingIds = ((row.siblingIds as string[] | null) ?? []);
+
+            const nextSpouseIds = spouseIds.filter(id => id !== personId);
+            const nextParentIds = parentIds.filter(id => id !== personId);
+            const nextChildIds = childIds.filter(id => id !== personId);
+            const nextSiblingIds = siblingIds.filter(id => id !== personId);
+
+            const changed =
+                nextSpouseIds.length !== spouseIds.length ||
+                nextParentIds.length !== parentIds.length ||
+                nextChildIds.length !== childIds.length ||
+                nextSiblingIds.length !== siblingIds.length;
+
+            if (changed) {
+                await tx
+                    .update(persons)
+                    .set({
+                        spouseIds: nextSpouseIds,
+                        parentIds: nextParentIds,
+                        childIds: nextChildIds,
+                        siblingIds: nextSiblingIds,
+                        updatedAt: new Date(),
+                    })
+                    .where(and(eq(persons.treeId, familyId), eq(persons.id, row.id)));
+            }
+        }
+
+        // If root ancestor is deleted, clear pointer (user can set a new root later).
+        if (person.isRootAncestor) {
+            await tx
+                .update(trees)
+                .set({
+                    rootAncestorId: null,
+                    updatedAt: new Date(),
+                })
+                .where(eq(trees.id, familyId));
+        }
 
         // Delete the person
         await tx.delete(persons).where(and(eq(persons.treeId, familyId), eq(persons.id, personId)));

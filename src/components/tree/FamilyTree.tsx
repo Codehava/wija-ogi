@@ -18,6 +18,7 @@ import {
     type Edge,
     type NodeChange,
     type NodePositionChange,
+    type Viewport,
     useReactFlow,
     ReactFlowProvider,
 } from '@xyflow/react';
@@ -130,6 +131,7 @@ function FamilyTreeInner({
     const [exportPaperSize, setExportPaperSize] = useState<'A4' | 'A3' | 'A2' | 'A1' | 'A0'>('A3');
     const [showPaperGuide, setShowPaperGuide] = useState(true);
     const [textDensityMode, setTextDensityMode] = useState<TextDensityMode>('readable');
+    const [currentViewport, setCurrentViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
     const [lodLevel, setLodLevel] = useState<number>(2); // P3b: 0=shape, 1=name, 2=full
 
@@ -853,6 +855,55 @@ function FamilyTreeInner({
         };
     }, [exportPaperSize, guideLayout]);
 
+    const guideScreenRect = useMemo(() => {
+        const personNodes = nodes.filter(node => node.type === 'male' || node.type === 'female');
+        if (personNodes.length === 0 || currentViewport.zoom <= 0) return null;
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        personNodes.forEach(node => {
+            minX = Math.min(minX, node.position.x);
+            minY = Math.min(minY, node.position.y);
+            maxX = Math.max(maxX, node.position.x + adaptiveSizes.nodeWidth);
+            maxY = Math.max(maxY, node.position.y + adaptiveSizes.nodeHeight);
+        });
+
+        const flowPadding = Math.max(24, Math.round(adaptiveSizes.nodeWidth * 0.16));
+        minX -= flowPadding;
+        minY -= flowPadding;
+        maxX += flowPadding;
+        maxY += flowPadding;
+
+        let width = Math.max(1, maxX - minX);
+        let height = Math.max(1, maxY - minY);
+        const currentAspect = width / height;
+        const targetAspect = guideLayout.targetAspect;
+
+        if (currentAspect > targetAspect) {
+            const targetHeight = width / targetAspect;
+            const extra = targetHeight - height;
+            minY -= extra / 2;
+            maxY += extra / 2;
+        } else {
+            const targetWidth = height * targetAspect;
+            const extra = targetWidth - width;
+            minX -= extra / 2;
+            maxX += extra / 2;
+        }
+
+        width = Math.max(1, maxX - minX);
+        height = Math.max(1, maxY - minY);
+
+        return {
+            left: minX * currentViewport.zoom + currentViewport.x,
+            top: minY * currentViewport.zoom + currentViewport.y,
+            width: width * currentViewport.zoom,
+            height: height * currentViewport.zoom,
+        };
+    }, [nodes, adaptiveSizes.nodeWidth, adaptiveSizes.nodeHeight, currentViewport, guideLayout.targetAspect]);
+
     const getTreeBounds = useCallback(() => {
         const posMap = positionsRef.current;
         if (posMap.size === 0) return null;
@@ -1150,6 +1201,11 @@ function FamilyTreeInner({
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Keep viewport state in sync so screen-space guide follows pan/zoom immediately.
+    useEffect(() => {
+        setCurrentViewport(reactFlowInstance.getViewport());
+    }, [reactFlowInstance, nodes.length]);
+
     const [isLegendOpen, setIsLegendOpen] = useState(true);
 
     if (persons.length === 0) {
@@ -1213,7 +1269,7 @@ function FamilyTreeInner({
                                 ? 'bg-teal-50 text-teal-700 border-teal-200'
                                 : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
                                 }`}
-                            title="Tampilkan batas kanvas auto berdasarkan paper ratio"
+                            title="Tampilkan batas kanvas auto mengikuti node di layar"
                         >
                             {showPaperGuide ? 'Guide On' : 'Guide Off'}
                         </button>
@@ -1300,11 +1356,15 @@ function FamilyTreeInner({
                 .lod-name-only .node-text-extra { display: none !important; }
             `}</style>
                 {showPaperGuide && (
-                    <div className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center px-4 pt-16 pb-4 print:hidden">
+                    <div className="pointer-events-none absolute inset-0 z-[2] print:hidden">
                         <div
-                            className="h-full w-auto max-w-full rounded-2xl border-2 border-dashed border-teal-400/70 bg-teal-100/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.35)]"
+                            className="absolute rounded-2xl border-2 border-dashed border-teal-400/70 bg-teal-100/10 shadow-[inset_0_0_0_1px_rgba(45,212,191,0.35)]"
                             style={{
-                                aspectRatio: `${guideLayout.pageW} / ${guideLayout.pageH}`,
+                                left: guideScreenRect?.left ?? 0,
+                                top: guideScreenRect?.top ?? 0,
+                                width: guideScreenRect?.width ?? 0,
+                                height: guideScreenRect?.height ?? 0,
+                                opacity: guideScreenRect ? 1 : 0,
                             }}
                         />
                     </div>
@@ -1320,7 +1380,11 @@ function FamilyTreeInner({
                     onSelectionDragStart={handleSelectionDragStart}
                     onSelectionDragStop={handleSelectionDragStop}
                     onPaneClick={handlePaneClick}
+                    onMove={(_, viewport) => {
+                        setCurrentViewport(viewport);
+                    }}
                     onMoveEnd={(_, viewport) => {
+                        setCurrentViewport(viewport);
                         // P3b: LOD — compute detail level from zoom
                         const zoom = viewport.zoom;
                         const newLod = zoom < 0.1 ? 0 : zoom < 0.2 ? 1 : 2;

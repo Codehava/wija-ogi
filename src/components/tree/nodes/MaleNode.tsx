@@ -42,13 +42,14 @@ function MaleNodeComponent({ data }: NodeProps) {
     const shapeSize = d.shapeSize || 56;
     const textWidth = d.nodeTextWidth || 180;
     const fontScale = d.fontScale || 1;
-    const densityScale = d.textDensityMode === 'compact' ? 0.9 : 1.08;
+    const mode = d.textDensityMode || 'readable';
+    const densityScale = mode === 'compact' ? 0.78 : 1.34;
     const hasTitle = !!d.person.title || !!d.person.reignTitle;
     const isLongLatinName = d.displayName.length > 28;
     const effectiveScale = fontScale * densityScale;
-    const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, 11, 18);
-    const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, 10.5, 16.5);
-    const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, 8.5, 11);
+    const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, mode === 'compact' ? 9.5 : 12, mode === 'compact' ? 15 : 19);
+    const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, mode === 'compact' ? 9 : 11, mode === 'compact' ? 14 : 18);
+    const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, mode === 'compact' ? 7.5 : 8.5, mode === 'compact' ? 10 : 12);
 
     return (
         <div
