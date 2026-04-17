@@ -26,10 +26,10 @@
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                     FIREBASE SERVICES                          │
+│                     DATABASE & AUTH SERVICES                          │
 ├────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐   │
-│  │   Firebase      │  │   Firestore     │  │   Storage    │   │
+│  │   PostgreSQL + NextAuth      │  │   PostgreSQL     │  │   Storage    │   │
 │  │  Authentication │  │    Database     │  │   (Files)    │   │
 │  └─────────────────┘  └─────────────────┘  └──────────────┘   │
 └────────────────────────────────────────────────────────────────┘
@@ -39,8 +39,8 @@
 
 ## 🎯 Architecture Principles
 
-1. **Serverless First** - Firebase untuk mengurangi server management
-2. **Real-time by Default** - Firestore real-time listeners
+1. **Serverless First** - PostgreSQL + NextAuth untuk mengurangi server management
+2. **Real-time by Default** - PostgreSQL real-time listeners
 3. **No Stored Generation** - Kalkulasi dinamis dari relationships
 4. **Auto-Transliteration** - Latin ke Lontara secara otomatis
 5. **Security by Design** - Row-level security per family
@@ -61,12 +61,12 @@ Setiap keluarga adalah tenant terpisah dengan data yang terisolasi.
 
 ---
 
-## 📊 Database Schema (Firestore)
+## 📊 Database Schema (PostgreSQL)
 
 ### Collection Structure
 
 ```
-Firestore
+PostgreSQL
 │
 ├── families/                    # Tenant root
 │   └── {familyId}/
@@ -333,7 +333,7 @@ React Component
     │
     ├── Zustand Store (UI State)
     │
-    └── TanStack Query ──► Service Layer ──► Firestore
+    └── TanStack Query ──► Service Layer ──► PostgreSQL
                                 │
                                 ▼
                           Real-time Listener

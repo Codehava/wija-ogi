@@ -97,18 +97,18 @@ export function SidebarEditForm({
         onSave({
             firstName: formData.firstName!,
             lastName: formData.lastName || '',
-            middleName: formData.middleName,
+            middleName: formData.middleName || null,
             gender: formData.gender as Gender,
             birthDate: formData.birthDate,
-            birthPlace: formData.birthPlace,
+            birthPlace: formData.birthPlace || null,
             birthOrder: formData.birthOrder,
             deathDate: formData.deathDate,
-            deathPlace: formData.deathPlace,
+            deathPlace: formData.deathPlace || null,
             isLiving: formData.isLiving ?? true,
-            occupation: formData.occupation,
-            title: formData.title || undefined,
-            reignTitle: formData.reignTitle || undefined,
-            biography: formData.biography,
+            occupation: formData.occupation || null,
+            title: formData.title || null,
+            reignTitle: formData.reignTitle || null,
+            biography: formData.biography || null,
             isRootAncestor: formData.isRootAncestor
         });
     };

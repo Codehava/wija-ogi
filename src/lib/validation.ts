@@ -26,9 +26,9 @@ export const LanguageSchema = z.enum(['id', 'en']);
 const DateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Must be YYYY-MM-DD');
 const OptionalDateSchema = DateStringSchema.or(z.literal('')).transform(v => v || undefined).optional();
 
-/** Allow empty strings to become undefined for optional text fields */
+/** Allow empty strings to become null for optional text fields to support clearing values */
 const OptionalStringSchema = (max: number) =>
-    z.string().max(max).trim().transform(v => v || undefined).optional();
+    z.string().max(max).trim().transform(v => v === '' ? null : v).optional();
 
 export const CreatePersonSchema = z.object({
     firstName: z.string().min(1, 'First name is required').max(100).trim(),
@@ -42,7 +42,7 @@ export const CreatePersonSchema = z.object({
     deathPlace: OptionalStringSchema(200),
     isLiving: z.boolean().default(true),
     occupation: OptionalStringSchema(200),
-    title: NobilityTitleSchema.or(z.literal('')).transform(v => v || undefined).optional(),
+    title: NobilityTitleSchema.or(z.literal('')).transform(v => v === '' ? null : v).optional(),
     reignTitle: OptionalStringSchema(200),
     biography: z.string().max(5000).trim().optional().transform(v => v || undefined),
     isRootAncestor: z.boolean().optional(),

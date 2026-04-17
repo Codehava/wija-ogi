@@ -56,11 +56,11 @@ Menjadi platform terdepan untuk preservasi dan dokumentasi sejarah keluarga di I
 
 | Feature | Description | Technology |
 |---------|-------------|------------|
-| 🏠 **Multitenant** | Setiap keluarga punya workspace terpisah | Firestore Collections |
+| 🏠 **Multitenant** | Setiap keluarga punya workspace terpisah | PostgreSQL Collections |
 | 🔄 **Dynamic Generation** | Generasi dihitung dari relationships | BFS Algorithm |
 | 📜 **Dual Aksara** | Latin & Lontara auto-transliteration | Unicode + Custom Engine |
 | 🌐 **Foreign Letters** | F, V, Z, X, dll dengan pendekatan fonologis | Phonetic Mapping |
-| 🔥 **Real-time Sync** | Perubahan langsung terlihat semua user | Firestore Real-time |
+| 🔥 **Real-time Sync** | Perubahan langsung terlihat semua user | PostgreSQL Real-time |
 | 📱 **Mobile Ready** | Responsive design & PWA support | Next.js + TailwindCSS |
 
 ## 🔥 Tech Stack
@@ -78,13 +78,13 @@ Zustand 4         - Client state management
 TanStack Query 5  - Server state & caching
 ```
 
-### Backend (Firebase)
+### Backend (PostgreSQL + NextAuth)
 ```
-Firebase Auth     - Email/Password, Google, Facebook OAuth
-Cloud Firestore   - NoSQL database, real-time sync
-Firebase Storage  - Photos, PDFs, assets
+PostgreSQL + NextAuth Auth     - Email/Password, Google, Facebook OAuth
+Cloud PostgreSQL   - NoSQL database, real-time sync
+PostgreSQL + NextAuth Storage  - Photos, PDFs, assets
 Cloud Functions   - Serverless backend
-Firebase Hosting  - CDN, SSL, custom domain
+PostgreSQL + NextAuth Hosting  - CDN, SSL, custom domain
 ```
 
 ### Aksara Support
@@ -124,10 +124,10 @@ Unicode Block      - U+1A00 - U+1A1F (Buginese)
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────┐
-│                     FIREBASE SERVICES                          │
+│                     DATABASE & AUTH SERVICES                          │
 ├────────────────────────────────────────────────────────────────┤
 │  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────┐   │
-│  │   Firebase      │  │   Firestore     │  │   Storage    │   │
+│  │   PostgreSQL + NextAuth      │  │   PostgreSQL     │  │   Storage    │   │
 │  │  Authentication │  │    Database     │  │   (Files)    │   │
 │  └─────────────────┘  └─────────────────┘  └──────────────┘   │
 │                                                                │
@@ -140,8 +140,8 @@ Unicode Block      - U+1A00 - U+1A1F (Buginese)
 
 ## 🎯 Architecture Principles
 
-1. **Serverless First** - Firebase untuk mengurangi server management
-2. **Real-time by Default** - Firestore real-time listeners
+1. **Serverless First** - PostgreSQL + NextAuth untuk mengurangi server management
+2. **Real-time by Default** - PostgreSQL real-time listeners
 3. **No Stored Generation** - Kalkulasi dinamis dari relationships
 4. **Auto-Transliteration** - Latin ke Lontara secara otomatis
 5. **Security by Design** - Row-level security per family
@@ -163,7 +163,7 @@ interface Person {
 ## 📊 Collection Structure
 
 ```
-Firestore
+PostgreSQL
 │
 ├── families/                    # Tenant root
 │   └── {familyId}/
@@ -459,7 +459,7 @@ export const exportPDF = functions.https.onCall(async (data, context) => {
                │
                ▼
      ┌─────────────────┐
-     │  Sign Up / Login│ ──► Firebase Auth
+     │  Sign Up / Login│ ──► PostgreSQL + NextAuth Auth
      └────────┬────────┘
               │
               ▼
@@ -501,7 +501,7 @@ export const exportPDF = functions.https.onCall(async (data, context) => {
    └─ Show preview in modal
    │
    ▼
-4. Save to Firestore
+4. Save to PostgreSQL
    ├─ Create person document
    ├─ Update relationships
    └─ Trigger Cloud Function for additional processing
@@ -638,7 +638,7 @@ export const exportPDF = functions.https.onCall(async (data, context) => {
 
 # 8. AUTHENTICATION
 
-## 🔐 Firebase Auth Implementation
+## 🔐 PostgreSQL + NextAuth Auth Implementation
 
 ### Supported Methods
 - Email/Password with verification
@@ -942,7 +942,7 @@ src/
 │   ├── person/                   # Person components
 │   └── aksara/                   # Lontara components
 ├── lib/
-│   ├── firebase/                 # Firebase config
+│   ├── firebase/                 # PostgreSQL + NextAuth config
 │   ├── transliteration/          # Transliteration engine
 │   └── generation/               # Generation calculator
 ├── hooks/

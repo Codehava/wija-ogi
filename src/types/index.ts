@@ -338,19 +338,19 @@ export interface ExportRecord {
 
 export interface CreatePersonInput {
     firstName: string;
-    middleName?: string;
+    middleName?: string | null;
     lastName: string;
     gender: Gender;
     birthDate?: string;
-    birthPlace?: string;
+    birthPlace?: string | null;
     birthOrder?: number;           // Anak ke-XX (1, 2, 3...)
     deathDate?: string;
-    deathPlace?: string;
+    deathPlace?: string | null;
     isLiving: boolean;
-    occupation?: string;
-    title?: NobilityTitle;
-    reignTitle?: string;
-    biography?: string;
+    occupation?: string | null;
+    title?: NobilityTitle | null;
+    reignTitle?: string | null;
+    biography?: string | null;
     isRootAncestor?: boolean;
 }
 
