@@ -126,10 +126,10 @@ export const persons = pgTable('persons', {
     gedcomId: varchar('gedcom_id', { length: 50 }),
 
     // Names (Latin)
-    firstName: varchar('first_name', { length: 255 }).notNull(),
-    middleName: varchar('middle_name', { length: 255 }),
-    lastName: varchar('last_name', { length: 255 }).notNull(),
-    fullName: varchar('full_name', { length: 500 }),
+    firstName: text('first_name').notNull(),
+    middleName: text('middle_name'),
+    lastName: text('last_name').notNull(),
+    fullName: text('full_name'),
 
     // Names (Lontara - auto-transliterated)
     lontaraFirstName: text('lontara_first_name'),

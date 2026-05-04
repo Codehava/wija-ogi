@@ -34,9 +34,9 @@ const OptionalUrlSchema = (max: number) =>
     z.string().url().max(max).or(z.literal('')).transform(v => v === '' ? null : v).nullable().optional();
 
 export const CreatePersonSchema = z.object({
-    firstName: z.string().trim().min(1, 'Nama depan wajib diisi').max(255, 'Nama depan maksimal 255 karakter'),
-    middleName: OptionalStringSchema(255),
-    lastName: z.string().trim().max(255, 'Nama belakang maksimal 255 karakter').default(''),
+    firstName: z.string().trim().min(1, 'Nama depan wajib diisi').max(2000, 'Nama depan maksimal 2000 karakter'),
+    middleName: OptionalStringSchema(2000),
+    lastName: z.string().trim().max(2000, 'Nama belakang maksimal 2000 karakter').default(''),
     gender: GenderSchema,
     birthDate: OptionalDateSchema,
     birthPlace: OptionalStringSchema(200),
