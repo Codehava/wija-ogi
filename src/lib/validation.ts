@@ -28,15 +28,15 @@ const OptionalDateSchema = DateStringSchema.or(z.literal('')).transform(v => v |
 
 /** Allow empty strings to become null for optional text fields to support clearing values */
 const OptionalStringSchema = (max: number) =>
-    z.string().max(max).trim().transform(v => v === '' ? null : v).nullable().optional();
+    z.string().trim().max(max, `Maksimal ${max} karakter`).transform(v => v === '' ? null : v).nullable().optional();
 
 const OptionalUrlSchema = (max: number) =>
     z.string().url().max(max).or(z.literal('')).transform(v => v === '' ? null : v).nullable().optional();
 
 export const CreatePersonSchema = z.object({
-    firstName: z.string().min(1, 'First name is required').max(100).trim(),
-    middleName: OptionalStringSchema(100),
-    lastName: z.string().max(100).trim().default(''),
+    firstName: z.string().trim().min(1, 'Nama depan wajib diisi').max(255, 'Nama depan maksimal 255 karakter'),
+    middleName: OptionalStringSchema(255),
+    lastName: z.string().trim().max(255, 'Nama belakang maksimal 255 karakter').default(''),
     gender: GenderSchema,
     birthDate: OptionalDateSchema,
     birthPlace: OptionalStringSchema(200),
