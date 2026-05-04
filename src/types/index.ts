@@ -352,6 +352,8 @@ export interface CreatePersonInput {
     reignTitle?: string | null;
     biography?: string | null;
     isRootAncestor?: boolean;
+    photoUrl?: string | null;
+    thumbnailUrl?: string | null;
 }
 
 export interface CreateFamilyInput {

@@ -52,9 +52,9 @@ function MaleNodeComponent({ data }: NodeProps) {
     const effectiveScale = fontScale * densityScale;
     const isOutOfFocus = !!d.hasFocusBranchActive && !d.isInFocusBranch;
     const isOutOfAncestry = d.hasAncestryActive && !d.isOnAncestryPath;
-    const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, mode === 'compact' ? 9.5 : 12, mode === 'compact' ? 15 : 19);
-    const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, mode === 'compact' ? 9 : 11, mode === 'compact' ? 14 : 18);
-    const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, mode === 'compact' ? 7.5 : 8.5, mode === 'compact' ? 10 : 12);
+    const lontaraFontSize = clamp(shapeSize * 0.235 * effectiveScale, mode === 'compact' ? 10 : 13, mode === 'compact' ? 16 : 21);
+    const latinFontSize = clamp(shapeSize * (isLongLatinName ? 0.2 : 0.218) * effectiveScale, mode === 'compact' ? 9.5 : 12, mode === 'compact' ? 15 : 20);
+    const titleBadgeFontSize = clamp(shapeSize * 0.16 * effectiveScale, mode === 'compact' ? 8 : 9, mode === 'compact' ? 11 : 13);
 
     return (
         <div
@@ -111,9 +111,7 @@ function MaleNodeComponent({ data }: NodeProps) {
                             className="w-full h-full object-cover"
                             unoptimized
                         />
-                    ) : (
-                        <span className={`font-light opacity-90 ${shapeSize < 44 ? 'text-sm' : 'text-xl'}`}>♂</span>
-                    )}
+                    ) : null}
                 </div>
 
                 {/* Crown badge for nobility */}

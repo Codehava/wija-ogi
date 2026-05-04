@@ -28,7 +28,10 @@ const OptionalDateSchema = DateStringSchema.or(z.literal('')).transform(v => v |
 
 /** Allow empty strings to become null for optional text fields to support clearing values */
 const OptionalStringSchema = (max: number) =>
-    z.string().max(max).trim().transform(v => v === '' ? null : v).optional();
+    z.string().max(max).trim().transform(v => v === '' ? null : v).nullable().optional();
+
+const OptionalUrlSchema = (max: number) =>
+    z.string().url().max(max).or(z.literal('')).transform(v => v === '' ? null : v).nullable().optional();
 
 export const CreatePersonSchema = z.object({
     firstName: z.string().min(1, 'First name is required').max(100).trim(),
@@ -42,10 +45,12 @@ export const CreatePersonSchema = z.object({
     deathPlace: OptionalStringSchema(200),
     isLiving: z.boolean().default(true),
     occupation: OptionalStringSchema(200),
-    title: NobilityTitleSchema.or(z.literal('')).transform(v => v === '' ? null : v).optional(),
+    title: z.union([NobilityTitleSchema, z.literal(''), z.null()]).transform(v => v === '' ? null : v).optional(),
     reignTitle: OptionalStringSchema(200),
-    biography: z.string().max(5000).trim().optional().transform(v => v || undefined),
+    biography: OptionalStringSchema(5000),
     isRootAncestor: z.boolean().optional(),
+    photoUrl: OptionalUrlSchema(500),
+    thumbnailUrl: OptionalUrlSchema(500),
 });
 
 export const UpdatePersonSchema = CreatePersonSchema.partial();

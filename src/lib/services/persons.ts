@@ -284,6 +284,8 @@ export async function updatePerson(
     if (updates.reignTitle !== undefined) updateData.reignTitle = updates.reignTitle || null;
     if (updates.biography !== undefined) updateData.biography = updates.biography || null;
     if (updates.isRootAncestor !== undefined) updateData.isRootAncestor = updates.isRootAncestor;
+    if (updates.photoUrl !== undefined) updateData.photoUrl = updates.photoUrl || null;
+    if (updates.thumbnailUrl !== undefined) updateData.thumbnailUrl = updates.thumbnailUrl || null;
 
     // Re-transliterate if name changed
     if (updates.firstName || updates.middleName || updates.lastName) {

@@ -109,11 +109,33 @@ export function useFamilyActions({ familyId, persons, family, isSuperAdmin }: Us
         try {
             if (editingPerson) {
                 await personsApi.updatePerson(familyId, editingPerson.personId, data);
+                const fullName = [data.firstName, data.middleName, data.lastName]
+                    .filter(Boolean)
+                    .join(' ');
+                setSelectedPerson(prev => prev?.personId === editingPerson.personId
+                    ? {
+                        ...prev,
+                        firstName: data.firstName,
+                        middleName: data.middleName ?? undefined,
+                        lastName: data.lastName || '',
+                        fullName,
+                        gender: data.gender,
+                        birthDate: data.birthDate || undefined,
+                        birthOrder: data.birthOrder,
+                        deathDate: data.deathDate || undefined,
+                        isLiving: data.isLiving,
+                        isRootAncestor: data.isRootAncestor ?? false,
+                        title: data.title ?? undefined,
+                        reignTitle: data.reignTitle ?? undefined,
+                        biography: data.biography ?? undefined,
+                        birthPlace: data.birthPlace ?? undefined,
+                        deathPlace: data.deathPlace ?? undefined,
+                        occupation: data.occupation ?? undefined,
+                    }
+                    : prev);
                 setIsEditingSidebar(false);
                 setEditingPerson(null);
-                if (selectedPerson?.personId === editingPerson.personId) {
-                    setSelectedPerson(null);
-                }
+                toast.success('Perubahan anggota berhasil disimpan');
             } else {
                 const newPerson = await personsApi.createPerson(familyId, data);
                 if (addMemberContext && selectedPerson && newPerson?.personId) {

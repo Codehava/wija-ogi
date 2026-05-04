@@ -19,8 +19,8 @@ export interface ViewportInfo {
     containerHeight: number;
 }
 
-const NODE_WIDTH = 188;
-const NODE_HEIGHT = 128;
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 140;
 
 /**
  * Calculate a simple position for a new person without running full layout.

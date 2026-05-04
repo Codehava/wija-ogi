@@ -50,8 +50,8 @@ export interface FamilyTreeProps {
 }
 
 // Layout constants
-const NODE_WIDTH = 188;
-const NODE_HEIGHT = 128;
+const NODE_WIDTH = 220;
+const NODE_HEIGHT = 140;
 
 type AdaptiveSizes = {
     nodeWidth: number;
@@ -78,9 +78,9 @@ type SavedView = {
 
 // Adaptive sizing
 function getAdaptiveSizes(personCount: number): AdaptiveSizes {
-    if (personCount > 200) return { nodeWidth: 132, nodeHeight: 100, shapeSize: 42, textWidth: 136, fontScale: 1 };
-    if (personCount > 100) return { nodeWidth: 162, nodeHeight: 114, shapeSize: 50, textWidth: 168, fontScale: 1.08 };
-    return { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT, shapeSize: 58, textWidth: 188, fontScale: 1.16 };
+    if (personCount > 200) return { nodeWidth: 150, nodeHeight: 108, shapeSize: 44, textWidth: 156, fontScale: 1.08 };
+    if (personCount > 100) return { nodeWidth: 186, nodeHeight: 124, shapeSize: 52, textWidth: 196, fontScale: 1.16 };
+    return { nodeWidth: NODE_WIDTH, nodeHeight: NODE_HEIGHT, shapeSize: 60, textWidth: 220, fontScale: 1.24 };
 }
 
 // Custom node types for React Flow
